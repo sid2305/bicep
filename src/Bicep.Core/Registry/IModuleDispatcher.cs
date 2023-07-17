@@ -33,7 +33,7 @@ namespace Bicep.Core.Registry
 
         Task<bool> CheckModuleExists(ModuleReference moduleReference);
 
-        Task PublishModule(ModuleReference moduleReference, Stream compiled, string? documentationUri);
+        Task PublishModule(ModuleReference moduleReference, Stream compiledArmTemplate, Stream? bicepSources, string? documentationUri);
 
         void PruneRestoreStatuses();
     }

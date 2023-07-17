@@ -5,16 +5,21 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
-using System.Reflection.Metadata.Ecma335;
+using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using Azure;
 using Azure.Containers.ContainerRegistry;
+using Azure.Core;
 using Azure.Identity;
 using Bicep.Core.Configuration;
+using Bicep.Core.Extensions;
 using Bicep.Core.Modules;
 using Bicep.Core.Registry.Oci;
+using Microsoft.WindowsAzure.ResourceStack.Common.Extensions;
 using OciDescriptor = Bicep.Core.Registry.Oci.OciDescriptor;
 using OciManifest = Bicep.Core.Registry.Oci.OciManifest;
 
@@ -22,6 +27,11 @@ namespace Bicep.Core.Registry
 {
     public class AzureContainerRegistryManager
     {
+        private record ReferrersResponse(
+            int SchemaVersion,
+            string MediaType,
+            OciDescriptor[] Manifests);
+
         // media types are case-insensitive (they are lowercase by convention only)
         private const StringComparison MediaTypeComparison = StringComparison.OrdinalIgnoreCase;
         private const StringComparison DigestComparison = StringComparison.Ordinal;
@@ -33,6 +43,7 @@ namespace Bicep.Core.Registry
             this.clientFactory = clientFactory;
         }
 
+        [SuppressMessage("Trimming", "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code", Justification = "Relying on references to required properties of the generic type elsewhere in the codebase.")]
         public async Task<OciArtifactResult> PullArtifactAsync(RootConfiguration configuration, OciArtifactModuleReference moduleReference)
         {
             ContainerRegistryContentClient client;
@@ -40,7 +51,7 @@ namespace Bicep.Core.Registry
             Stream manifestStream;
             string manifestDigest;
 
-            async Task<(ContainerRegistryContentClient, OciManifest, Stream, string)> DownloadManifestInternalAsync(bool anonymousAccess)
+            async Task<(ContainerRegistryContentClient, OciManifest, Stream, string)> DownloadManifestInternalAsync(bool anonymousAccess)//asdfg
             {
                 var client = this.CreateBlobClient(configuration, moduleReference, anonymousAccess);
                 var (manifest, manifestStream, manifestDigest) = await DownloadManifestAsync(moduleReference, client);
@@ -68,10 +79,98 @@ namespace Bicep.Core.Registry
 
             var moduleStream = await ProcessManifest(client, manifest);
 
-            return new OciArtifactResult(manifestDigest, manifest, manifestStream, moduleStream);
+            //asdfg what do about exceptions getting sources?
+            Stream? sourcesStream = null;
+
+            // asdfg cyclic dependencies?
+            // asdfg what about references to other external modules?
+            /*
+             e.g.:
+             module m1 'br/public:samples/hello-world:1.0.2' = {
+               name: 'm1'
+               params: {
+                 name: 'me myself'
+               }
+             }
+            =>
+                {
+                  "uri": "file:///Users/stephenweatherford/repos/template-examples/bicep/modules/publicRegistry/helloWorld/main.bicep",
+                  "localPath": "main.bicep",
+                  "kind": "bicep"
+                },
+
+            */
+
+            var r = client.Pipeline.CreateRequest();
+            r.Method = new RequestMethod("GET");
+            r.Content = "hi";
+            var request = client.Pipeline.CreateRequest();
+            request.Method = RequestMethod.Get;
+
+            request.Uri.Reset(GetRegistryUri(moduleReference));
+            request.Uri.AppendPath("/v2/", false);
+            request.Uri.AppendPath(moduleReference.Repository, true);
+            request.Uri.AppendPath("/referrers/", false);
+            request.Uri.AppendPath(manifestDigest);
+
+            //request.Uri.Reset(new Uri(uri, UriKind.Absolute));
+            using var cts = new CancellationTokenSource();
+            var response = await client.Pipeline.SendRequestAsync(request, cts.Token);
+
+            if (!response.IsError)
+            {
+                /* Example:
+                    {
+                      "schemaVersion": 2,
+                      "mediaType": "application/vnd.oci.image.index.v1+json",
+                      "manifests": [
+                        {
+                          "mediaType": "application/vnd.oci.image.manifest.v1+json",
+                          "digest": "sha256:210a9f9e8134fc77940ea17f971adcf8752e36b513eb7982223caa1120774284",
+                          "size": 811,
+                          "artifactType": "application/vnd.ms.bicep.module.sources"
+                        },
+                        ...
+                */
+
+                JsonElement referrersResponse = JsonSerializer.Deserialize<JsonElement>(response.Content.ToString());
+                var bicepSourcesManifestDigests = referrersResponse.TryGetPropertyByPath("manifests")
+                    ?.EnumerateArray().Where(m => m.GetProperty("artifactType").GetString() == BicepMediaTypes.BicepModuleSourcesArtifactType)
+                    ?.Select(m => m.GetProperty("digest").GetString());
+
+                if (bicepSourcesManifestDigests?.Count() > 1)
+                {
+                    // this actually hits trying to publish again unless you use --force.  Shouldn't be happening.
+                    throw new Exception("asdfg");
+                }
+                else if (bicepSourcesManifestDigests?.SingleOrDefault() is string sourcesManifestDigest)
+                {
+                    var sourcesManifest = await client.GetManifestAsync(sourcesManifestDigest, cts.Token/*asdfg*/);
+                    var sourcesManifestStream = sourcesManifest.Value.Manifest.ToStream();
+                    var dm = DeserializeManifest(sourcesManifestStream);
+                    var sourceLayer = dm.Layers.FirstOrDefault(l => l.MediaType == BicepMediaTypes.BicepModuleSourcesV1Layer);
+                    if (sourceLayer?.Digest is string sourcesBlobDigest) {
+                        var sourcesBlobResult = await client.DownloadBlobContentAsync(sourcesBlobDigest, cts.Token/*asdfg*/);
+                        sourcesStream = sourcesBlobResult.Value.Content.ToStream();
+                    }
+
+                }
+            }
+            else
+            {
+                throw new Exception($"Request failed with status code {response.Status}");
+            }
+
+            return new OciArtifactResult(manifestDigest, manifest, manifestStream, moduleStream, sourcesStream);
         }
 
-        public async Task PushArtifactAsync(RootConfiguration configuration, OciArtifactModuleReference moduleReference, string? artifactType, StreamDescriptor config, string? documentationUri = null, string? description = null, params StreamDescriptor[] layers)
+        //asdfg https://learn.microsoft.com/en-us/dotnet/api/overview/azure/containers.containerregistry-readme?view=azure-dotnet#upload-images
+        //asdfg https://learn.microsoft.com/en-us/azure/container-registry/container-registry-image-formats#oci-artifacts
+        // asdfg Azure Container Registry supports the OCI Distribution Specification, a vendor-neutral, cloud-agnostic spec to store, share, secure, and deploy container images and other content types (artifacts). The specification allows a registry to store a wide range of artifacts in addition to container images. You use tooling appropriate to the artifact to push and pull artifacts. For examples, see:
+        //asdfg https://github.com/oras-project/artifacts-spec/blob/main/scenarios.md
+
+
+        public async Task PushArtifactAsync(RootConfiguration configuration, OciArtifactModuleReference moduleReference, string? artifactType, StreamDescriptor config, Stream? bicepSources/*asdfg dono't pass this in*/, string? documentationUri = null, string? description = null, params StreamDescriptor[] layers)
         {
             // TODO: How do we choose this? Does it ever change?
             var algorithmIdentifier = DescriptorFactory.AlgorithmIdentifierSha256;
@@ -83,7 +182,7 @@ namespace Bicep.Core.Registry
             var configDescriptor = DescriptorFactory.CreateDescriptor(algorithmIdentifier, config);
 
             config.ResetStream();
-            _ = await blobClient.UploadBlobAsync(config.Stream);
+            var result1 = await blobClient.UploadBlobAsync(config.Stream);//asdfg
 
             var layerDescriptors = new List<OciDescriptor>(layers.Length);
             foreach (var layer in layers)
@@ -93,7 +192,7 @@ namespace Bicep.Core.Registry
                 layerDescriptors.Add(layerDescriptor);
 
                 layer.ResetStream();
-                _ = await blobClient.UploadBlobAsync(layer.Stream);
+                var result2 = await blobClient.UploadBlobAsync(layer.Stream);//asdfg
             }
 
             var annotations = new Dictionary<string, string>();
@@ -108,7 +207,11 @@ namespace Bicep.Core.Registry
                 annotations[LanguageConstants.OciOpenContainerImageDescriptionAnnotation] = description;
             }
 
-            var manifest = new OciManifest(2, artifactType, configDescriptor, layerDescriptors, annotations);
+            // This is important to ensure any sources manifests will always point to a unique module manifest,
+            //   even if something in the sources changes that doesn't affect the compiled output.
+            annotations[LanguageConstants.OciOpenContainerImageCreatedAnnotation] = DateTime.UtcNow.ToRFC3339();
+
+            var manifest = new OciManifest(2, null, artifactType, configDescriptor, layerDescriptors, null, annotations);
 
             using var manifestStream = new MemoryStream();
             OciSerialization.Serialize(manifestStream, manifest);
@@ -116,6 +219,47 @@ namespace Bicep.Core.Registry
             manifestStream.Position = 0;
             var manifestBinaryData = await BinaryData.FromStreamAsync(manifestStream);
             var manifestUploadResult = await blobClient.SetManifestAsync(manifestBinaryData, moduleReference.Tag, mediaType: ManifestMediaType.OciImageManifest);
+
+            manifestStream.Position = 0;
+            var manifestStreamDescriptor = new StreamDescriptor(manifestStream, ManifestMediaType.OciImageManifest.ToString()/*asdfg*/); //asdfg
+            var manifestDescriptor = DescriptorFactory.CreateDescriptor(algorithmIdentifier, manifestStreamDescriptor);
+
+            if (bicepSources is not null)
+            {
+                // asdfg remove current attachments (only if force??)
+
+                // NOTE: Azure Container Registries won't recognize this as a valid attachment with this being valid JSON, so write out an empty object
+                using var innerConfigStream = new MemoryStream(new byte[] { (byte)'{', (byte)'}' });
+                var configasdfg = new StreamDescriptor(innerConfigStream, BicepMediaTypes.BicepModuleSourcesArtifactType);//, new Dictionary<string, string> { { "asdfg1", "asdfg value" } });
+                var configasdfgDescriptor = DescriptorFactory.CreateDescriptor(algorithmIdentifier, configasdfg);
+
+                // Upload config blob
+                configasdfg.ResetStream();
+                var asdfgresponse1 = await blobClient.UploadBlobAsync(configasdfg.Stream); // asdfg should get digest from result
+                var layerasdfg = new StreamDescriptor(bicepSources, BicepMediaTypes.BicepModuleSourcesV1Layer, new Dictionary<string, string> { { "org.opencontainers.image.title", $"Sources for {moduleReference.FullyQualifiedReference}"/*asdfg*/ } });
+                layerasdfg.ResetStream();
+                var layerasdfgDescriptor = DescriptorFactory.CreateDescriptor(algorithmIdentifier, layerasdfg);
+
+                layerasdfg.ResetStream();
+                var asdfgresponse2 = await blobClient.UploadBlobAsync(layerasdfg.Stream);
+
+                var manifestasdfg = new OciManifest(
+                    2,
+                    null,
+                    BicepMediaTypes.BicepModuleSourcesArtifactType,
+                    configasdfgDescriptor,
+                    new List<OciDescriptor> { layerasdfgDescriptor },
+                    subject: manifestDescriptor, // This is the reference back to the main manifest that links the source manifest to it
+                    new Dictionary<string, string> { { LanguageConstants.OciOpenContainerImageCreatedAnnotation, DateTime.UtcNow.ToRFC3339() } }
+                    );
+
+                using var manifestasdfgStream = new MemoryStream();
+                OciSerialization.Serialize(manifestasdfgStream, manifestasdfg);
+
+                manifestasdfgStream.Position = 0;
+                var manifestasdfgBinaryData = await BinaryData.FromStreamAsync(manifestasdfgStream);
+                var manifestasdfgUploadResult = await blobClient.SetManifestAsync(manifestasdfgBinaryData, null);//, mediaType: ManifestMediaType.OciImageManifest/*asdfg?*/);
+            }
         }
 
         private static Uri GetRegistryUri(OciArtifactModuleReference moduleReference) => new($"https://{moduleReference.Registry}");

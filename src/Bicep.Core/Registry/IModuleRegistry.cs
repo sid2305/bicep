@@ -75,8 +75,9 @@ namespace Bicep.Core.Registry
         /// Publishes the module at the specified path to the registry.
         /// </summary>
         /// <param name="moduleReference">The module reference</param>
-        /// <param name="compiled">The compiled module</param>
-        Task PublishModule(ModuleReference moduleReference, Stream compiled, string? documentationUri, string? description);
+        /// <param name="compiledArmTemplate">The compiled module</param>
+        /// <param name="bicepSources">The original Bicep sources</param>
+        Task PublishModule(ModuleReference moduleReference, Stream compiledArmTemplate, Stream? bicepSources, string? documentationUri, string? description);
 
         /// <summary>
         /// Returns documentationUri for the module.

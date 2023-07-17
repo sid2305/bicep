@@ -192,7 +192,7 @@ namespace Bicep.Core.Samples
             }
 
             stream.Position = 0;
-            await dispatcher.PublishModule(targetReference, stream, documentationUri);
+            await dispatcher.PublishModule(targetReference, stream, null/*asdfg*/, documentationUri);
         }
 
         private static Uri RandomFileUri() => PathHelper.FilePathToFileUrl(Path.GetTempFileName());

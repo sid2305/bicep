@@ -67,12 +67,13 @@ namespace Bicep.Core.Registry
         {
             /*
              * this should be kept in sync with the WriteModuleContent() implementation
+             * but beware that it's possible older versions of Bicep may be sharing this cache
              *
              * when we write content to the module cache, we attempt to get a lock so that no other writes happen in the directory
              * the code here appears to implement a lock-free read by checking existence of several files that are expected in a fully restored module
              *
              * this relies on the assumption that modules are never updated in-place in the cache
-             * when we need to invalidate the cache, the module directory (or even a single file) should be deleted from the cache
+             * when we need to invalidate the cache, the module directory (or even a single file) should be deleted from the cache  //asdfg?
              */
             return
                 !this.FileResolver.FileExists(this.GetModuleFileUri(reference, ModuleFileType.ModuleMain)) ||
@@ -221,14 +222,14 @@ namespace Bicep.Core.Registry
             return await base.InvalidateModulesCacheInternal(references);
         }
 
-        public override async Task PublishModule(OciArtifactModuleReference moduleReference, Stream compiled, string? documentationUri, string? description)
+        public override async Task PublishModule(OciArtifactModuleReference moduleReference, Stream compiledArmTemplate, Stream? bicepSources/*asdfg*/, string? documentationUri, string? description) //asdfg
         {
-            var config = new StreamDescriptor(Stream.Null, BicepMediaTypes.BicepModuleConfigV1);
-            var layer = new StreamDescriptor(compiled, BicepMediaTypes.BicepModuleLayerV1Json);
+            var config = new StreamDescriptor(Stream.Null, BicepMediaTypes.BicepModuleConfigV1); //asdfg
+            var layer = new StreamDescriptor(compiledArmTemplate, BicepMediaTypes.BicepModuleLayerV1Json);
 
             try
             {
-                await this.client.PushArtifactAsync(configuration, moduleReference, BicepMediaTypes.BicepModuleArtifactType, config, documentationUri, description, layer);
+                await this.client.PushArtifactAsync(configuration, moduleReference, BicepMediaTypes.BicepModuleArtifactType, config, bicepSources, documentationUri, description, layer);
             }
             catch (AggregateException exception) when (CheckAllInnerExceptionsAreRequestFailures(exception))
             {
@@ -242,13 +243,15 @@ namespace Bicep.Core.Registry
             }
         }
 
-        protected override void WriteModuleContent(OciArtifactModuleReference reference, OciArtifactResult result)
+        // Writes the contents of the downloaded module into the local cache
+        protected override void WriteModuleContentToCache(OciArtifactModuleReference reference, OciArtifactResult result)
         {
             /*
              * this should be kept in sync with the IsModuleRestoreRequired() implementation
+             * but beware that it's possible older versions of Bicep may be sharing this cache
              */
 
-            // write main.bicep
+            // write main.json
             this.FileResolver.Write(this.GetModuleFileUri(reference, ModuleFileType.ModuleMain), result.ModuleStream);
 
             // write manifest
@@ -262,6 +265,17 @@ namespace Bicep.Core.Registry
             OciSerialization.Serialize(metadataStream, metadata);
             metadataStream.Position = 0;
             this.FileResolver.Write(this.GetModuleFileUri(reference, ModuleFileType.Metadata), metadataStream);
+
+            // write sources
+            var sourcesFile = this.GetModuleFileUri(reference, ModuleFileType.Sources);
+            if (result.SourcesStream is Stream sourcesStream)
+            {
+                this.FileResolver.Write(sourcesFile, result.SourcesStream);
+            }
+            else
+            {
+                this.FileResolver.DeleteFileIfExists(sourcesFile);
+             }
         }
 
         protected override string GetModuleDirectoryPath(OciArtifactModuleReference reference)
@@ -313,7 +327,7 @@ namespace Bicep.Core.Registry
             {
                 var result = await this.client.PullArtifactAsync(configuration, reference);
 
-                await this.TryWriteModuleContentAsync(reference, result);
+                await this.TryWriteModuleContentToCacheAsync(reference, result);
 
                 return (result, null);
             }
@@ -361,6 +375,7 @@ namespace Bicep.Core.Registry
                 ModuleFileType.Lock => "lock",
                 ModuleFileType.Manifest => "manifest",
                 ModuleFileType.Metadata => "metadata",
+                ModuleFileType.Sources => "sources.zip",
                 _ => throw new NotImplementedException($"Unexpected module file type '{fileType}'.")
             };
 
@@ -372,7 +387,8 @@ namespace Bicep.Core.Registry
             ModuleMain,
             Manifest,
             Lock,
-            Metadata
+            Metadata,
+            Sources,
         };
     }
 }

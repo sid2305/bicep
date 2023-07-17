@@ -167,6 +167,7 @@ namespace Bicep.Cli.IntegrationTests
                     moduleReference: moduleReference!,
                     // intentionally setting artifactType to null to simulate a publish done by an older version of Bicep
                     artifactType: null,
+                    bicepSources: null, //asdfg
                     config: new StreamDescriptor(Stream.Null, BicepMediaTypes.BicepModuleConfigV1),
                     layers: new StreamDescriptor(compiledStream, BicepMediaTypes.BicepModuleLayerV1Json));
             }

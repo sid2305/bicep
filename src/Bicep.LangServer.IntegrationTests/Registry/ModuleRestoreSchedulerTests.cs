@@ -180,7 +180,7 @@ namespace Bicep.LangServer.UnitTests.Registry
 
             public bool IsModuleRestoreRequired(ModuleReference reference) => true;
 
-            public Task PublishModule(ModuleReference moduleReference, Stream compiled, string? documentationUri, string? description)
+            public Task PublishModule(ModuleReference moduleReference, Stream compiledArmTemplates, Stream? bicepSources, string? documentationUri, string? description)
             {
                 throw new NotImplementedException();
             }
