@@ -28,7 +28,7 @@ using static Bicep.Core.Diagnostics.DiagnosticBuilder;
 namespace Bicep.Core.UnitTests.Registry;
 
 [TestClass]
-public class SourceBundleTests
+public class SourceArchiveTests
 {
     [TestMethod]
     public void asdfg()
@@ -42,7 +42,7 @@ metadata description = 'fake bicep file'";
         fs.AddFile(Path.Combine(projectFolder, "main.bicep"), mainBicepContents);
 
         var bicepMain = SourceFileFactory.CreateBicepFile(new Uri("file:///main.bicep"), mainBicepContents);
-        using var stream = SourceBundle.PackSources(bicepMain.FileUri, bicepMain);
+        using var stream = SourceArchive.PackSources(bicepMain.FileUri, bicepMain);
 
         using var test = File.OpenWrite("/Users/stephenweatherford/test.zip"); //asdfg
         stream.CopyTo(test);
@@ -51,9 +51,9 @@ metadata description = 'fake bicep file'";
         stream.Seek(0, SeekOrigin.Begin);
 
 
+        //asdfg
         //SourceBundle.UnpackSources()
-        SourceBundle sourceBundle = new SourceBundle(stream);
-        //SourceBundle sourceBundle = new SourceBundle(fs, bundleFolder);
+        SourceArchive sourceArchive = new SourceArchive(stream);
 
         //
     }
@@ -84,7 +84,7 @@ metadata description = 'fake bicep file'";
             )
         );
 
-        var sut = new SourceBundle(zip);
+        var sut = new SourceArchive(zip);
         var file = sut.GetSourceFiles().Single();
 
         file.metadata.Kind.Should().Be("bicep");
@@ -95,7 +95,7 @@ metadata description = 'fake bicep file'";
     [TestMethod]
     public void BackwardsCompat_ShouldBeAbleToReadOldFormats()
     {
-        // DO NOT ADD TO DATA - IT IS MEANT TO TEST READING
+        // DO NOT ADD TO THIS DATA - IT IS MEANT TO TEST READING
         // OLD FILE VERSIONS WITH MINIMAL DATA
         var zip = CreateZipFile(
             (
@@ -118,7 +118,7 @@ metadata description = 'fake bicep file'";
             )
         );
 
-        var sut = new SourceBundle(zip);
+        var sut = new SourceArchive(zip);
         var file = sut.GetSourceFiles().Single();
 
         file.metadata.Kind.Should().Be("bicep");
@@ -156,7 +156,7 @@ metadata description = 'fake bicep file'";
             )
         );
 
-        var sut = new SourceBundle(zip);
+        var sut = new SourceArchive(zip);
         var file = sut.GetSourceFiles().Single();
 
         file.metadata.Kind.Should().Be("bicep");

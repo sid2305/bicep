@@ -17,7 +17,7 @@ using System.Linq;
 
 namespace Bicep.Core.Registry;
 
-public class SourceBundle : IDisposable //asfdg SourceArchive?
+public class SourceArchive : IDisposable
 {
     private ZipArchive? zipArchive;
 
@@ -83,7 +83,7 @@ public class SourceBundle : IDisposable //asfdg SourceArchive?
     //     }
     // }
 
-    public SourceBundle(Stream stream)  //asdfg takes ownership
+    public SourceArchive(Stream stream)  //asdfg takes ownership
     {
         this.zipArchive = new ZipArchive(stream, ZipArchiveMode.Read);
     }
@@ -92,7 +92,7 @@ public class SourceBundle : IDisposable //asfdg SourceArchive?
     {
         if (zipArchive is null)
         {
-            throw new ObjectDisposedException(nameof(SourceBundle));
+            throw new ObjectDisposedException(nameof(SourceArchive));
         }
 
         if (zipArchive.GetEntry(relativePath) is not ZipArchiveEntry entry)
@@ -110,61 +110,6 @@ public class SourceBundle : IDisposable //asfdg SourceArchive?
         return GetMetadata().EntryPoint;
     }
 
-    [SuppressMessage("Trimming", "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code", Justification = "<Pending>")]
-    private Metadata GetMetadata()
-    {
-        var metadataJson = GetRequiredEntryContents("__metadata.json"); //asdfg magic
-        var metadata = JsonSerializer.Deserialize<Metadata>(metadataJson, new JsonSerializerOptions() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase })
-            ?? throw new ArgumentException($"Unable to deserialize metadata from {"__metadata.json"}");
-        if (metadata is null)
-        {
-            throw new ArgumentException($"Unable to deserialize metadata from {"__metadata.json"}");
-        }
-
-        return metadata;
-    }
-
-    public IEnumerable<(FileMetadata metadata, string contents)> GetSourceFiles()
-    {
-        if (zipArchive is null)
-        {
-            throw new ObjectDisposedException(nameof(SourceBundle));
-        }
-
-        var metadata = GetMetadata();
-        foreach (var entry in metadata.SourceFiles)
-        {
-            yield return (entry, GetRequiredEntryContents(entry.LocalPath));
-        }
-
-        // foreach (var file in metadata.SourceFiles)
-        // {
-        //     switch (file)
-        //     {
-        //         case BicepFile bicepFile:
-        //             source = bicepFile.ProgramSyntax.ToTextPreserveFormatting(); //asdfg?
-        //             break;
-        //         case ArmTemplateFile armTemplateFile:
-        //             source = armTemplateFile.Template?.ToJson() ?? "(ARM template is null)"; //asdfg testpoint
-        //             break;
-        //         case TemplateSpecFile templateSpecFile:
-        //             source = templateSpecFile.MainTemplateFile.Template?.ToJson() ?? "(ARM template is null)"; //asdfg testpoint
-        //             break;
-        //         default:
-        //             throw new ArgumentException($"Unexpected source file type {file.GetType().Name}");
-        //     }
-
-        //     //asdfg map folder structure
-        //     var sourceRelativeDestinationPath = Path.GetFileName(file.FileUri.AbsolutePath); ;
-        //     File.WriteAllText(Path.Combine(sourcesFolder.FullName, sourceRelativeDestinationPath), source, Encoding.UTF8);
-        // }
-
-        // var zipPath = Path.Combine(tempFolder.FullName, ZipFileName);
-        // ZipFile.CreateFromDirectory(zipSourceRoot.FullName, zipPath);
-
-        // return new PackResult(tempFolder.FullName, zipPath);
-    }
-
     public static Stream PackSources(SourceFileGrouping sourceFileGrouping)
     {
         return PackSources(sourceFileGrouping.EntryFileUri, sourceFileGrouping.SourceFiles.ToArray());
@@ -180,11 +125,6 @@ public class SourceBundle : IDisposable //asfdg SourceArchive?
         using (ZipArchive zipArchive = new ZipArchive(stream, ZipArchiveMode.Create, leaveOpen: true))
         {
             zipArchive.Comment = "asdfg";
-
-            //var tempFolder = fileSystem.Directory.CreateTempSubdirectory("biceppublish_");
-            //var zipSourceRoot =fileSystem.Path.Join(tempFolder.FullName, Path.GetFileNameWithoutExtension(ZipFileName)));//asdfg fileSystem.Directory.CreateDirectory(fileSystem.Path.Join(tempFolder.FullName, Path.GetFileNameWithoutExtension(ZipFileName)));
-            //var sourcesFolder = fileSystem.Directory.CreateDirectory(fileSystem.Path.Join(zipSourceRoot.FullName, "files"));
-            //var metadataPath = fileSystem.Path.Join(zipSourceRoot.FullName, "metadata.json");
 
             var filesMetadata = new List<FileMetadata>();
 
@@ -221,15 +161,35 @@ public class SourceBundle : IDisposable //asfdg SourceArchive?
             WriteNewEntry(zipArchive, "__metadata.json", metadataJson); //asdfg no collisions
         }
 
-        // File.WriteAllText(metadataPath, metadataJson, Encoding.UTF8);
-
-        // var zipPath = Path.Combine(tempFolder.FullName, ZipFileName);
-        // //asdfg ZipFile.CreateFromDirectory(zipSourceRoot.FullName, zipPath);
-
-        // return new PackResult(tempFolder.FullName, zipPath);
-
         stream.Seek(0, SeekOrigin.Begin);
         return stream;
+    }
+
+    public IEnumerable<(FileMetadata metadata, string contents)> GetSourceFiles()
+    {
+        if (zipArchive is null)
+        {
+            throw new ObjectDisposedException(nameof(SourceArchive));
+        }
+
+        var metadata = GetMetadata();
+        foreach (var entry in metadata.SourceFiles)
+        {
+            yield return (entry, GetRequiredEntryContents(entry.LocalPath));
+        }
+    }
+    [SuppressMessage("Trimming", "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code", Justification = "<Pending>")]
+    private Metadata GetMetadata()
+    {
+        var metadataJson = GetRequiredEntryContents("__metadata.json"); //asdfg magic
+        var metadata = JsonSerializer.Deserialize<Metadata>(metadataJson, new JsonSerializerOptions() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase })
+            ?? throw new ArgumentException($"Unable to deserialize metadata from {"__metadata.json"}");
+        if (metadata is null)
+        {
+            throw new ArgumentException($"Unable to deserialize metadata from {"__metadata.json"}");
+        }
+
+        return metadata;
     }
 
     private static void WriteNewEntry(ZipArchive archive, string path, string contents)
@@ -249,34 +209,10 @@ public class SourceBundle : IDisposable //asfdg SourceArchive?
         }
     }
 
-    // // TODO: override finalizer only if 'Dispose(bool disposing)' has code to free unmanaged resources
-    // ~SourceBundle()
-    // {
-    //     // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-    //     Dispose(disposing: false);
-    // }
-
     public void Dispose()
     {
         // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
         Dispose(disposing: true);
         GC.SuppressFinalize(this);
     }
-
-    // public static void UnpackSources(IFileSystem fileSystem, Stream stream, string localSourcesFolder)
-    // {
-    //     var zipFile = fileSystem.Path.GetTempFileName(); //asdfg delete when done
-    //     using (var fileStream = fileSystem.File.OpenWrite(zipFile))
-    //     {
-    //         stream.CopyTo(fileStream);
-    //     }
-
-    //     ZipFile.ExtractToDirectory(zipFile, localSourcesFolder); //asdfg won't work with filessytem?  use ZipArchive
-    // // }
-
-    // public static void UnpackSources(IFileSystem fileSystem, string zipFilePath, string localSourcesFolder)
-    // {
-    //     fileSystem.File.Copy(zipFilePath, Path.Combine(localSourcesFolder, ZipFileName), overwrite: true);
-    //     //asdfg ZipFile.ExtractToDirectory(zipFilePath, localSourcesFolder);
-    // }
 }

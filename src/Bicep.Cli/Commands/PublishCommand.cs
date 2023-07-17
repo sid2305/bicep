@@ -75,7 +75,7 @@ namespace Bicep.Cli.Commands
             compilationWriter.ToStream(compilation, compiledArmTemplateStream);
             compiledArmTemplateStream.Position = 0;
 
-            using var sourcesStream = SourceBundle.PackSources(compilation.SourceFileGrouping);
+            using var sourcesStream = SourceArchive.PackSources(compilation.SourceFileGrouping);
             await this.PublishModuleAsync(moduleReference, compiledArmTemplateStream, sourcesStream, documentationUri, overwriteIfExists);
 
             return 0;
