@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography.Xml;
 using System.Threading.Tasks;
 using Bicep.Core.Diagnostics;
 using Bicep.Core.Modules;
@@ -36,6 +37,8 @@ namespace Bicep.Core.Registry
 
         public abstract Task<string?> TryGetDescription(T reference);
 
+        public abstract SourceArchive? TryGetSources(T reference);
+
         public bool IsModuleRestoreRequired(ModuleReference reference) => this.IsModuleRestoreRequired(ConvertReference(reference));
 
         public Task<bool> CheckModuleExists(ModuleReference reference) => this.CheckModuleExists(ConvertReference(reference));
@@ -54,6 +57,8 @@ namespace Bicep.Core.Registry
         public string? GetDocumentationUri(ModuleReference reference) => this.TryGetDocumentationUri(ConvertReference(reference));
 
         public async Task<string?> TryGetDescription(ModuleReference reference) => await this.TryGetDescription(ConvertReference(reference));
+
+        public SourceArchive? TryGetSources(ModuleReference reference) => this.TryGetSources(ConvertReference(reference));
 
         public abstract RegistryCapabilities GetCapabilities(T reference);
 

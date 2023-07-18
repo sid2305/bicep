@@ -34,6 +34,8 @@ using Bicep.LanguageServer.Utils;
 
 namespace Bicep.LangServer.IntegrationTests
 {
+    //asdfg
+
     [TestClass]
     public class DefinitionTests
     {

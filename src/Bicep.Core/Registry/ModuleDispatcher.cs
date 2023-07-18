@@ -231,6 +231,12 @@ namespace Bicep.Core.Registry
             }
         }
 
+        public bool TryGetModuleSources(ModuleReference moduleReference, [NotNullWhen(true)] out SourceArchive? sourceArchive) {
+            var registry = this.GetRegistry(moduleReference);
+            sourceArchive = registry.TryGetSources(moduleReference);
+            return sourceArchive is { };
+        }
+
         private IModuleRegistry GetRegistry(ModuleReference moduleReference) =>
             Registries(moduleReference.ParentModuleUri).TryGetValue(moduleReference.Scheme, out var registry) ? registry : throw new InvalidOperationException($"Unexpected module reference scheme '{moduleReference.Scheme}'.");
 

@@ -36,5 +36,7 @@ namespace Bicep.Core.Registry
         Task PublishModule(ModuleReference moduleReference, Stream compiledArmTemplate, Stream? bicepSources, string? documentationUri);
 
         void PruneRestoreStatuses();
+
+        bool TryGetModuleSources(ModuleReference moduleReference, [NotNullWhen(true)] out SourceArchive? sourceArchive);
     }
 }

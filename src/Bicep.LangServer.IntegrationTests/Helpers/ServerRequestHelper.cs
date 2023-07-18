@@ -21,6 +21,9 @@ using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 
 namespace Bicep.LangServer.IntegrationTests
 {
+    //asdfg?
+
+
     public class FileRequestHelper
     {
         private readonly ILanguageClient client;
@@ -129,7 +132,6 @@ namespace Bicep.LangServer.IntegrationTests
             });
 
             response.Should().NotBeNull();
-
 
             // go to def should produce single result in all cases
             response.Should().HaveCount(1);

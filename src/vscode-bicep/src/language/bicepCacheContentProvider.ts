@@ -31,9 +31,10 @@ export class BicepCacheContentProvider
   onDidChange?: vscode.Event<vscode.Uri> | undefined;
 
   async provideTextDocumentContent(
-    uri: vscode.Uri,
+    uri: vscode.Uri, //asdfg eg 'bicep-cache:/Users/stephenweatherford/.bicep/br/sawbicep.azurecr.io/storage/test%24/main.json#br%3Asawbicep.azurecr.io%2Fstorage%3Atest'
     token: vscode.CancellationToken,
   ): Promise<string> {
+    // Ask the language server for the sources for the cached module
     const response = await this.languageClient.sendRequest(
       bicepCacheRequestType,
       this.getBicepCacheRequest(uri),
@@ -44,14 +45,14 @@ export class BicepCacheContentProvider
   }
 
   private getBicepCacheRequest(uri: vscode.Uri) {
-    // The URIs have the format of bicep-cache:<uri-encoded bicep file path>#<uri-encoded bicep module reference>.
-    const path = decodeURIComponent(uri.path);
-    const target = decodeURIComponent(uri.fragment);
+    // The URIs have the format of bicep-cache:<uri-encoded bicep module reference>#<uri-encoded main.json cached file path>
+    const path = decodeURIComponent(uri.fragment); // asdfg eg 'bicep-cache:br%3Asawbicep.azurecr.io/storage%3Atest#%2FUsers%2Fstephenweatherford%2F.bicep%2Fbr%2Fsawbicep.azurecr.io%2Fstorage%2Ftest%24%2Fmain.json'
+    const target = decodeURIComponent(uri.path);
 
     return { textDocument: TextDocumentIdentifier.create(path), target };
   }
 
-  private getModuleReferenceScheme(document: vscode.TextDocument) {
+  private getModuleReferenceScheme(document: vscode.TextDocument) { //asdfg
     const moduleReferenceWithLeadingSeparator = document.uri.path;
     const colonIndex = moduleReferenceWithLeadingSeparator.indexOf(":");
     if (colonIndex < 0) {
@@ -80,7 +81,7 @@ export class BicepCacheContentProvider
     }
   }
 
-  private getLanguageId(scheme: string) {
+  private getLanguageId(scheme: string) { //asdfg
     switch (scheme) {
       case "ts":
         return "json";

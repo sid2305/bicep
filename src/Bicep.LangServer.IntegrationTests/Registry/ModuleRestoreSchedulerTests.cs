@@ -213,6 +213,8 @@ namespace Bicep.LangServer.UnitTests.Registry
                 moduleReference = new MockModuleRef(reference, PathHelper.FilePathToFileUrl(Path.GetTempFileName()));
                 return true;
             }
+
+            public SourceArchive? TryGetSources(ModuleReference moduleReference) => null; //asdfg
         }
 
         private class MockModuleRef : ModuleReference

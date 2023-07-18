@@ -90,5 +90,11 @@ namespace Bicep.Core.Registry
         /// </summary>
         /// <param name="moduleReference">The module reference</param>
         Task<string?> TryGetDescription(ModuleReference moduleReference);
+
+        /// <summary>
+        /// Returns the source code for the module, if available
+        /// </summary>
+        /// <param name="moduleReference">The module reference</param>
+        SourceArchive? TryGetSources(ModuleReference moduleReference);
     }
 }

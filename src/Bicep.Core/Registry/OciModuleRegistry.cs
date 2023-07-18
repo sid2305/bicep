@@ -148,7 +148,7 @@ namespace Bicep.Core.Registry
         /// </summary>
         /// <param name="publicModuleName">e.g. app/dapr-containerapp</param>
         /// <param name="tag">e.g. 1.0.1</param>
-        public static string GetPublicBicepModuleDocumentationUri(string publicModuleName, string tag)
+        public static string GetPublicBicepModuleDocumentationUri(string publicModuleName, string tag) //asdfg show doc link in sources?
         {
             // Example: https://github.com/Azure/bicep-registry-modules/tree/app/dapr-containerapp/1.0.2/modules/app/dapr-containerapp/README.md
             return $"https://github.com/Azure/bicep-registry-modules/tree/{publicModuleName}/{tag}/modules/{publicModuleName}/README.md";
@@ -380,6 +380,18 @@ namespace Bicep.Core.Registry
             };
 
             return Path.Combine(this.GetModuleDirectoryPath(reference), fileName);
+        }
+
+        public override SourceArchive? TryGetSources(OciArtifactModuleReference reference)
+        {
+            var zipFile = GetModuleFilePath(reference, ModuleFileType.Sources);
+            if (!File.Exists(zipFile))
+            {
+                return null;
+            }
+
+            var stream = File.OpenRead(zipFile);
+            return new SourceArchive(stream);
         }
 
         private enum ModuleFileType

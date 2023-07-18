@@ -90,7 +90,7 @@ export async function createLanguageService(
     documentSelector: [{ language: bicepLanguageId }],
     initializationOptions: {
       // this tells the server that this client can handle additional DocumentUri schemes
-      enableRegistryContent: true,
+      enableRegistryContent: true, //asdfg
     },
     progressOnInitialization: true,
     outputChannel,

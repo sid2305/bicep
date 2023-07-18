@@ -106,5 +106,10 @@ namespace Bicep.Core.Registry
 
             return null;
         }
+
+        public override SourceArchive? TryGetSources(LocalModuleReference reference)
+        {
+            return null; //asdfg
+        }
     }
 }
