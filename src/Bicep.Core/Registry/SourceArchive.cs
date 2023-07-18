@@ -17,6 +17,9 @@ using System.Linq;
 
 namespace Bicep.Core.Registry;
 
+// remove user info from paths
+// paths: absolute or relative or both?
+
 public class SourceArchive : IDisposable
 {
     private ZipArchive? zipArchive;
@@ -165,7 +168,7 @@ public class SourceArchive : IDisposable
         return stream;
     }
 
-    public IEnumerable<(FileMetadata metadata, string contents)> GetSourceFiles()
+    public IEnumerable<(FileMetadata Metadata, string Contents)> GetSourceFiles()
     {
         if (zipArchive is null)
         {

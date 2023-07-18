@@ -87,9 +87,9 @@ metadata description = 'fake bicep file'";
         var sut = new SourceArchive(zip);
         var file = sut.GetSourceFiles().Single();
 
-        file.metadata.Kind.Should().Be("bicep");
-        file.contents.Should().Be("bicep contents");
-        file.metadata.Uri.AbsolutePath.Should().Contain("main.bicep");
+        file.Metadata.Kind.Should().Be("bicep");
+        file.Contents.Should().Be("bicep contents");
+        file.Metadata.Uri.AbsolutePath.Should().Contain("main.bicep");
     }
 
     [TestMethod]
@@ -121,9 +121,9 @@ metadata description = 'fake bicep file'";
         var sut = new SourceArchive(zip);
         var file = sut.GetSourceFiles().Single();
 
-        file.metadata.Kind.Should().Be("bicep");
-        file.contents.Should().Be("bicep contents");
-        file.metadata.Uri.AbsolutePath.Should().Contain("main.bicep");
+        file.Metadata.Kind.Should().Be("bicep");
+        file.Contents.Should().Be("bicep contents");
+        file.Metadata.Uri.AbsolutePath.Should().Contain("main.bicep");
     }
 
     [TestMethod]
@@ -159,9 +159,9 @@ metadata description = 'fake bicep file'";
         var sut = new SourceArchive(zip);
         var file = sut.GetSourceFiles().Single();
 
-        file.metadata.Kind.Should().Be("bicep");
-        file.contents.Should().Be("bicep contents");
-        file.metadata.Uri.AbsolutePath.Should().Contain("main.bicep");
+        file.Metadata.Kind.Should().Be("bicep");
+        file.Contents.Should().Be("bicep contents");
+        file.Metadata.Uri.AbsolutePath.Should().Contain("main.bicep");
     }
 
     private Stream CreateZipFile(params (string relativePath, string contents)[] files) {

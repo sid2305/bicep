@@ -9,6 +9,7 @@ using MediatR;
 using OmniSharp.Extensions.JsonRpc;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using System;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -65,20 +66,17 @@ namespace Bicep.LanguageServer.Handlers
             }
 
             if (moduleDispatcher.TryGetModuleSources(moduleReference, out var sourceArchive)) { //asdfg eg file:///Users/stephenweatherford/.bicep/br/sawbicep.azurecr.io/storage/test$/main.json
-                using var sources = sourceArchive;
+                using (var sources = sourceArchive)
+                {
+                    var sourcesCombined =
+                        string.Join(
+                            "\n==================================================================\n",
+                            sources.GetSourceFiles()
+                            .Select(m => $"{m.Metadata.Uri}:\n\n{m.Contents}\n")
+                            .ToArray());
 
-                var sb = new StringBuilder();
-                sb.AppendLine("Entrypoint: " + sources.GetEntrypointUri());
-                sb.AppendLine();
-
-                foreach (var m in sources.GetSourceFiles()) {
-                    sb.AppendLine();
-                    sb.AppendLine(m.metadata.Uri.OriginalString);
-                    sb.AppendLine();
-                    sb.AppendLine(m.contents);
+                    return Task.FromResult(new BicepRegistryCacheResponse(sourcesCombined));
                 }
-
-                return Task.FromResult(new BicepRegistryCacheResponse(sb.ToString()));
             }
 
             // No sources available asdfg

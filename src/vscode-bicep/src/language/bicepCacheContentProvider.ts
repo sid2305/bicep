@@ -31,6 +31,7 @@ export class BicepCacheContentProvider
   onDidChange?: vscode.Event<vscode.Uri> | undefined;
 
   async provideTextDocumentContent(
+    // asdfg because non-fragment doesn't end with .bicep, not showing as bicep file in editor
     uri: vscode.Uri, //asdfg eg 'bicep-cache:/Users/stephenweatherford/.bicep/br/sawbicep.azurecr.io/storage/test%24/main.json#br%3Asawbicep.azurecr.io%2Fstorage%3Atest'
     token: vscode.CancellationToken,
   ): Promise<string> {
