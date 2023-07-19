@@ -17,8 +17,89 @@ using System.Linq;
 
 namespace Bicep.Core.Registry;
 
-// remove user info from paths
-// paths: absolute or relative or both?
+// asdfg fix regression: opening template spec or arm templates doesn't show in JSON editor
+// asdfg analyzer failures will show in editor that would have been ignored with bicepconfig.json
+// asdfg okay to show location of template spec refs?  I assume they're in the compiled ARM json anyway?
+// asdfg loadContent files?  they don't currently show up in sources
+// asdfg option to not publish sources?
+// asdfg hide under capabilities
+// asdfg anthony (marcin?) said we should built off of the modified bicep (stripped comments)...  correct?
+//     asdfg what about formatting JSON?
+
+// asdfg remove user info from paths in __metadata.json
+// asdfg built json
+// asdfg paths: absolute or relative or both?
+//   e.g.
+/*
+ {
+  "entryPoint": "file:///Users/stephenweatherford/repos/template-examples/bicep/modules/complicated/my%20entrypoint.bicep",
+  "sourceFiles": [
+    {
+      "uri": "/Users/stephenweatherford/.bicep/br/mcr.microsoft.com/bicep$app$app-configuration/1.0.1$/main.json",
+      "localPath": "main.json",
+      "kind": "armTemplate"
+    },
+    {
+      "uri": "/Users/stephenweatherford/.bicep/br/mcr.microsoft.com/bicep$samples$hello-world/1.0.2$/main.json",
+      "localPath": "main.json",
+      "kind": "armTemplate"
+    },
+    {
+      "uri": "file:///Users/stephenweatherford/repos/template-examples/bicep/modules/simpleModule/storageAccount.bicep",
+      "localPath": "storageAccount.bicep",
+      "kind": "bicep"
+    },
+    {
+      "uri": "/Users/stephenweatherford/.bicep/br/mcr.microsoft.com/bicep$app$dapr-containerapps-environment/1.2.2$/main.json",
+      "localPath": "main.json",
+      "kind": "armTemplate"
+    },
+    {
+      "uri": "/Users/stephenweatherford/.bicep/ts/e5ef2b13-6478-4887-ad57-1aa6b9475040/sawbicep/storagespec/2.0a/main.json",
+      "localPath": "main.json",
+      "kind": "templateSpec"
+    },
+    {
+      "uri": "file:///Users/stephenweatherford/repos/template-examples/bicep/modules/complicated/my%20entrypoint.bicep",
+      "localPath": "my%20entrypoint.bicep",
+      "kind": "bicep"
+    },
+    {
+      "uri": "file:///Users/stephenweatherford/repos/template-examples/bicep/modules/complicated/modules/main.bicep",
+      "localPath": "main.bicep",
+      "kind": "bicep"
+    },
+    {
+      "uri": "/Users/stephenweatherford/.bicep/ts/e5ef2b13-6478-4887-ad57-1aa6b9475040/sawbicep/storagespec/1.0a/main.json",
+      "localPath": "main.json",
+      "kind": "templateSpec"
+    }
+  ]
+}
+ */
+// asdfg example: relative to ancestor of entrypoint:
+/*
+ module relativePath '../simpleModule/storageAccount.bicep' = {
+    =>
+     {
+  "uri": "file:///Users/stephenweatherford/repos/template-examples/bicep/modules/simpleModule/storageAccount.bicep",
+  "localPath": "storageAccount.bicep",
+  "kind": "bicep"
+},
+
+ */
+//asdfg same module could be referenced in different ways in different places
+
+// asdfg template spec e.g.:
+// module tsModule 'ts:e5ef2b13-6478-4887-ad57-1aa6b9475040/sawbicep/storageSpec:1.0a' = {
+// =>
+// /Users/stephenweatherford/.bicep/ts/e5ef2b13-6478-4887-ad57-1aa6b9475040/sawbicep/storagespec/1.0a/main.json:
+
+// asdfg should I decompress sources.zip?
+// asdfg pretty-print JSON?
+// asdfg remove comments from bicep
+// asdfg show bicep sources for nested modules?
+//     /Users/stephenweatherford/.bicep/br/mcr.microsoft.com/bicep$app$dapr-containerapps-environment/1.2.2$/main.json:
 
 public class SourceArchive : IDisposable
 {
@@ -168,6 +249,10 @@ public class SourceArchive : IDisposable
         return stream;
     }
 
+    public string GetMetadataContentsAsdfgDeleteMe() {
+        return GetRequiredEntryContents("__metadata.json"); //asdfg magic
+    }
+
     public IEnumerable<(FileMetadata Metadata, string Contents)> GetSourceFiles()
     {
         if (zipArchive is null)
@@ -176,7 +261,7 @@ public class SourceArchive : IDisposable
         }
 
         var metadata = GetMetadata();
-        foreach (var entry in metadata.SourceFiles)
+        foreach (var entry in metadata.SourceFiles) //asdfg entrypoint first
         {
             yield return (entry, GetRequiredEntryContents(entry.LocalPath));
         }

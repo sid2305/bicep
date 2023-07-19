@@ -65,10 +65,13 @@ namespace Bicep.LanguageServer.Handlers
                 throw new InvalidOperationException($"Unable to obtain the entry point URI for module '{moduleReference.FullyQualifiedReference}'.");
             }
 
+            // asdfg tracing
             if (moduleDispatcher.TryGetModuleSources(moduleReference, out var sourceArchive)) { //asdfg eg file:///Users/stephenweatherford/.bicep/br/sawbicep.azurecr.io/storage/test$/main.json
                 using (var sources = sourceArchive)
                 {
-                    var sourcesCombined =
+                    var sourcesCombined = sources.GetMetadataContentsAsdfgDeleteMe();
+                    sourcesCombined += "\n==================================================================\n";
+                    sourcesCombined +=
                         string.Join(
                             "\n==================================================================\n",
                             sources.GetSourceFiles()
