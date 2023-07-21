@@ -23,6 +23,26 @@ using Microsoft.WindowsAzure.ResourceStack.Common.Extensions;
 using OciDescriptor = Bicep.Core.Registry.Oci.OciDescriptor;
 using OciManifest = Bicep.Core.Registry.Oci.OciManifest;
 
+
+// asdfg cyclic dependencies?
+// asdfg what about references to other external modules?
+/*
+ e.g.:
+ module m1 'br/public:samples/hello-world:1.0.2' = {
+   name: 'm1'
+   params: {
+     name: 'me myself'
+   }
+ }
+=>
+    {
+      "uri": "file:///Users/stephenweatherford/repos/template-examples/bicep/modules/publicRegistry/helloWorld/main.bicep",
+      "localPath": "main.bicep",
+      "kind": "bicep"
+    },
+
+*/
+
 namespace Bicep.Core.Registry
 {
     public class AzureContainerRegistryManager
@@ -49,12 +69,12 @@ namespace Bicep.Core.Registry
             ContainerRegistryContentClient client;
             OciManifest manifest;
             Stream manifestStream;
-            string manifestDigest;
+            string mainManifestDigest;
 
-            async Task<(ContainerRegistryContentClient, OciManifest, Stream, string)> DownloadManifestInternalAsync(bool anonymousAccess)//asdfg
+            async Task<(ContainerRegistryContentClient, OciManifest, Stream, string)> DownloadMainManifestInternalAsync(bool anonymousAccess)
             {
                 var client = this.CreateBlobClient(configuration, moduleReference, anonymousAccess);
-                var (manifest, manifestStream, manifestDigest) = await DownloadManifestAsync(moduleReference, client);
+                var (manifest, manifestStream, manifestDigest) = await DownloadMainManifestAsync(moduleReference, client);
                 return (client, manifest, manifestStream, manifestDigest);
             }
 
@@ -62,45 +82,32 @@ namespace Bicep.Core.Registry
             {
                 // Try authenticated client first.
                 Trace.WriteLine($"Authenticated attempt to pull artifact for module {moduleReference.FullyQualifiedReference}.");
-                (client, manifest, manifestStream, manifestDigest) = await DownloadManifestInternalAsync(anonymousAccess: false);
+                (client, manifest, manifestStream, mainManifestDigest) = await DownloadMainManifestInternalAsync(anonymousAccess: false);
             }
             catch (RequestFailedException exception) when (exception.Status == 401 || exception.Status == 403)
             {
                 // Fall back to anonymous client.
                 Trace.WriteLine($"Authenticated attempt to pull artifact for module {moduleReference.FullyQualifiedReference} failed, received code {exception.Status}. Fallback to anonymous pull.");
-                (client, manifest, manifestStream, manifestDigest) = await DownloadManifestInternalAsync(anonymousAccess: true);
+                (client, manifest, manifestStream, mainManifestDigest) = await DownloadMainManifestInternalAsync(anonymousAccess: true);
             }
             catch (CredentialUnavailableException)
             {
                 // Fall back to anonymous client.
                 Trace.WriteLine($"Authenticated attempt to pull artifact for module {moduleReference.FullyQualifiedReference} failed due to missing login step. Fallback to anonymous pull.");
-                (client, manifest, manifestStream, manifestDigest) = await DownloadManifestInternalAsync(anonymousAccess: true);
+                (client, manifest, manifestStream, mainManifestDigest) = await DownloadMainManifestInternalAsync(anonymousAccess: true);
             }
 
+            // Continue using the client that worked for the rest of the calls
+
             var moduleStream = await ProcessManifest(client, manifest);
+            Stream? sourcesStream = await GetBicepSourcesAsync(client, moduleReference, mainManifestDigest);
 
-            //asdfg what do about exceptions getting sources?
-            Stream? sourcesStream = null;
+            return new OciArtifactResult(mainManifestDigest, manifest, manifestStream, moduleStream, sourcesStream);
+        }
 
-            // asdfg cyclic dependencies?
-            // asdfg what about references to other external modules?
-            /*
-             e.g.:
-             module m1 'br/public:samples/hello-world:1.0.2' = {
-               name: 'm1'
-               params: {
-                 name: 'me myself'
-               }
-             }
-            =>
-                {
-                  "uri": "file:///Users/stephenweatherford/repos/template-examples/bicep/modules/publicRegistry/helloWorld/main.bicep",
-                  "localPath": "main.bicep",
-                  "kind": "bicep"
-                },
-
-            */
-
+        // Retrieves a list of manifests that refer to the specified manifest (and thus are attached to it)
+        private static async Task<IEnumerable<(string artifactType, string digest)>> GetReferrersAsync(ContainerRegistryContentClient client, OciArtifactModuleReference moduleReference, string mainManifestDigest)
+        {
             var r = client.Pipeline.CreateRequest();
             r.Method = new RequestMethod("GET");
             r.Content = "hi";
@@ -111,57 +118,63 @@ namespace Bicep.Core.Registry
             request.Uri.AppendPath("/v2/", false);
             request.Uri.AppendPath(moduleReference.Repository, true);
             request.Uri.AppendPath("/referrers/", false);
-            request.Uri.AppendPath(manifestDigest);
+            request.Uri.AppendPath(mainManifestDigest);
 
-            //request.Uri.Reset(new Uri(uri, UriKind.Absolute));
-            using var cts = new CancellationTokenSource();
-            var response = await client.Pipeline.SendRequestAsync(request, cts.Token);
-
-            if (!response.IsError)
+            var response = await client.Pipeline.SendRequestAsync(request, CancellationToken.None);
+            if (response.IsError)
             {
-                /* Example:
+                throw new Exception($"Unable to retrieve source manifests. Referrers API failed with status code {response.Status}");
+            }
+
+            /* Example result:
+                {
+                  "schemaVersion": 2,
+                  "mediaType": "application/vnd.oci.image.index.v1+json",
+                  "manifests": [
                     {
-                      "schemaVersion": 2,
-                      "mediaType": "application/vnd.oci.image.index.v1+json",
-                      "manifests": [
-                        {
-                          "mediaType": "application/vnd.oci.image.manifest.v1+json",
-                          "digest": "sha256:210a9f9e8134fc77940ea17f971adcf8752e36b513eb7982223caa1120774284",
-                          "size": 811,
-                          "artifactType": "application/vnd.ms.bicep.module.sources"
-                        },
-                        ...
-                */
+                      "mediaType": "application/vnd.oci.image.manifest.v1+json",
+                      "digest": "sha256:210a9f9e8134fc77940ea17f971adcf8752e36b513eb7982223caa1120774284",
+                      "size": 811,
+                      "artifactType": "application/vnd.ms.bicep.module.sources"
+                    },
+                    ...
+            */
+            var referrersResponse = JsonSerializer.Deserialize<JsonElement>(response.Content.ToString());
+            return referrersResponse.TryGetPropertyByPath("manifests")
+                ?.EnumerateArray()
+                .Select<JsonElement, (string? artifactType, string? digest)>(
+                    m => (m.GetProperty("artifactType").GetString(), m.GetProperty("digest").GetString()))
+                .Where(m => m.artifactType is not null && m.digest is not null)
+                .Select(m => (m.artifactType!, m.digest!))
+                ?? Enumerable.Empty<(string, string)>();
+        }
 
-                JsonElement referrersResponse = JsonSerializer.Deserialize<JsonElement>(response.Content.ToString());
-                var bicepSourcesManifestDigests = referrersResponse.TryGetPropertyByPath("manifests")
-                    ?.EnumerateArray().Where(m => m.GetProperty("artifactType").GetString() == BicepMediaTypes.BicepModuleSourcesArtifactType)
-                    ?.Select(m => m.GetProperty("digest").GetString());
-
-                if (bicepSourcesManifestDigests?.Count() > 1)
-                {
-                    // this actually hits trying to publish again unless you use --force.  Shouldn't be happening.
-                    throw new Exception("asdfg");
-                }
-                else if (bicepSourcesManifestDigests?.SingleOrDefault() is string sourcesManifestDigest)
-                {
-                    var sourcesManifest = await client.GetManifestAsync(sourcesManifestDigest, cts.Token/*asdfg*/);
-                    var sourcesManifestStream = sourcesManifest.Value.Manifest.ToStream();
-                    var dm = DeserializeManifest(sourcesManifestStream);
-                    var sourceLayer = dm.Layers.FirstOrDefault(l => l.MediaType == BicepMediaTypes.BicepModuleSourcesV1Layer);
-                    if (sourceLayer?.Digest is string sourcesBlobDigest) {
-                        var sourcesBlobResult = await client.DownloadBlobContentAsync(sourcesBlobDigest, cts.Token/*asdfg*/);
-                        sourcesStream = sourcesBlobResult.Value.Content.ToStream();
-                    }
-
-                }
+        private async Task<Stream?> GetBicepSourcesAsync(ContainerRegistryContentClient client, OciArtifactModuleReference moduleReference, string mainManifestDigest)
+        {
+            var referrers = await GetReferrersAsync(client, moduleReference, mainManifestDigest);
+            var sourceDigests = referrers.Where(r => r.artifactType == BicepMediaTypes.BicepModuleSourcesArtifactType).Select(r => r.digest);
+            if (sourceDigests?.Count() > 1)
+            {//asdfg testpoint?
+                Trace.WriteLine($"Multiple source manifests found for module {moduleReference.FullyQualifiedReference}, ignoring. "
+                + $"Module manifest: ${mainManifestDigest}. "
+                + $"Source referrers: {string.Join(", ", sourceDigests)}");
             }
-            else
+            else if (sourceDigests?.SingleOrDefault() is string sourcesManifestDigest)
             {
-                throw new Exception($"Request failed with status code {response.Status}");
+                var sourcesManifest = await client.GetManifestAsync(sourcesManifestDigest);
+                var sourcesManifestStream = sourcesManifest.Value.Manifest.ToStream();
+                var dm = DeserializeManifest(sourcesManifestStream);
+                var sourceLayer = dm.Layers.FirstOrDefault(l => l.MediaType == BicepMediaTypes.BicepModuleSourcesV1Layer);
+                if (sourceLayer?.Digest is string sourcesBlobDigest)
+                {
+                    var sourcesBlobResult = await client.DownloadBlobContentAsync(sourcesBlobDigest);
+
+                    // Caller is responsible for disposing the stream
+                    return sourcesBlobResult.Value.Content.ToStream();
+                }
             }
 
-            return new OciArtifactResult(manifestDigest, manifest, manifestStream, moduleStream, sourcesStream);
+            return null;
         }
 
         //asdfg https://learn.microsoft.com/en-us/dotnet/api/overview/azure/containers.containerregistry-readme?view=azure-dotnet#upload-images
@@ -228,7 +241,7 @@ namespace Bicep.Core.Registry
             {
                 // asdfg remove current attachments (only if force??)
 
-                // NOTE: Azure Container Registries won't recognize this as a valid attachment with this being valid JSON, so write out an empty object
+                // Azure Container Registries won't recognize this as a valid attachment unless this is valid JSON, so write out an empty object
                 using var innerConfigStream = new MemoryStream(new byte[] { (byte)'{', (byte)'}' });
                 var configasdfg = new StreamDescriptor(innerConfigStream, BicepMediaTypes.BicepModuleSourcesArtifactType);//, new Dictionary<string, string> { { "asdfg1", "asdfg value" } });
                 var configasdfgDescriptor = DescriptorFactory.CreateDescriptor(algorithmIdentifier, configasdfg);
@@ -268,7 +281,7 @@ namespace Bicep.Core.Registry
             ? this.clientFactory.CreateAnonymousBlobClient(configuration, GetRegistryUri(moduleReference), moduleReference.Repository)
             : this.clientFactory.CreateAuthenticatedBlobClient(configuration, GetRegistryUri(moduleReference), moduleReference.Repository);
 
-        private static async Task<(OciManifest, Stream, string)> DownloadManifestAsync(OciArtifactModuleReference moduleReference, ContainerRegistryContentClient client)
+        private static async Task<(OciManifest, Stream, string)> DownloadMainManifestAsync(OciArtifactModuleReference moduleReference, ContainerRegistryContentClient client)
         {
             Response<GetManifestResult> manifestResponse;
             try
