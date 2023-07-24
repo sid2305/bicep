@@ -19,7 +19,7 @@ using Bicep.Core.Workspaces;
 
 namespace Bicep.Core.Registry
 {
-    public class LocalModuleRegistry : ModuleRegistry<LocalModuleReference> //asdfg
+    public class LocalModuleRegistry : ModuleRegistry<LocalModuleReference>
     {
         private readonly IFileResolver fileResolver;
         private readonly Uri parentModuleUri;
@@ -109,7 +109,7 @@ namespace Bicep.Core.Registry
 
         public override SourceArchive? TryGetSources(LocalModuleReference reference)
         {
-            return null; //asdfg
+            return null;
         }
     }
 }

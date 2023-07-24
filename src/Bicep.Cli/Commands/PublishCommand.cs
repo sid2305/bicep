@@ -58,7 +58,7 @@ namespace Bicep.Cli.Commands
             {
                 // Publishing an ARM template file.
                 using var armTemplateStream = this.fileSystem.FileStream.New(inputPath, FileMode.Open, FileAccess.Read);
-                await this.PublishModuleAsync(moduleReference, armTemplateStream, null/*asdfg? test scenario */, documentationUri, overwriteIfExists);
+                await this.PublishModuleAsync(moduleReference, armTemplateStream, null, documentationUri, overwriteIfExists);
 
                 return 0;
             }

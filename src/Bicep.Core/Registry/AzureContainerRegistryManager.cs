@@ -23,6 +23,11 @@ using Microsoft.WindowsAzure.ResourceStack.Common.Extensions;
 using OciDescriptor = Bicep.Core.Registry.Oci.OciDescriptor;
 using OciManifest = Bicep.Core.Registry.Oci.OciManifest;
 
+// asdfg anthony says create hash from modified sources
+
+//asdfg ITestDataSource?
+
+//asdfg source mapping?  var features = new FeatureProviderOverrides(TestContext, RegistryEnabled: dataSet.HasExternalModules, SourceMappingEnabled: true);
 
 // asdfg cyclic dependencies?
 // asdfg what about references to other external modules?
@@ -47,11 +52,6 @@ namespace Bicep.Core.Registry
 {
     public class AzureContainerRegistryManager
     {
-        private record ReferrersResponse(
-            int SchemaVersion,
-            string MediaType,
-            OciDescriptor[] Manifests);
-
         // media types are case-insensitive (they are lowercase by convention only)
         private const StringComparison MediaTypeComparison = StringComparison.OrdinalIgnoreCase;
         private const StringComparison DigestComparison = StringComparison.Ordinal;
@@ -108,45 +108,50 @@ namespace Bicep.Core.Registry
         // Retrieves a list of manifests that refer to the specified manifest (and thus are attached to it)
         private static async Task<IEnumerable<(string artifactType, string digest)>> GetReferrersAsync(ContainerRegistryContentClient client, OciArtifactModuleReference moduleReference, string mainManifestDigest)
         {
-            var r = client.Pipeline.CreateRequest();
-            r.Method = new RequestMethod("GET");
-            r.Content = "hi";
-            var request = client.Pipeline.CreateRequest();
-            request.Method = RequestMethod.Get;
+            IEnumerable<(string artifactType, string digest)>? referrers = null;
 
-            request.Uri.Reset(GetRegistryUri(moduleReference));
-            request.Uri.AppendPath("/v2/", false);
-            request.Uri.AppendPath(moduleReference.Repository, true);
-            request.Uri.AppendPath("/referrers/", false);
-            request.Uri.AppendPath(mainManifestDigest);
-
-            var response = await client.Pipeline.SendRequestAsync(request, CancellationToken.None);
-            if (response.IsError)
+            if (client.Pipeline is { } pipeline) // asdfg this guards against Bicep.Core.UnitTests.Registry.MockRegistryBlobClient which doesn't implement Pipeline.  Should it be implemented?
             {
-                throw new Exception($"Unable to retrieve source manifests. Referrers API failed with status code {response.Status}");
+                var request = client.Pipeline.CreateRequest();
+                request.Method = RequestMethod.Get;
+                request.Uri.Reset(GetRegistryUri(moduleReference));
+                request.Uri.AppendPath("/v2/", false);
+                request.Uri.AppendPath(moduleReference.Repository, true);
+                request.Uri.AppendPath("/referrers/", false);
+                request.Uri.AppendPath(mainManifestDigest);
+
+                var response = await client.Pipeline.SendRequestAsync(request, CancellationToken.None);
+                if (response.IsError)
+                {
+                    throw new Exception($"Unable to retrieve source manifests. Referrers API failed with status code {response.Status}");
+                }
+
+                //asdfg test with responses that contain additional data
+                /* Example result:
+                    {
+                      "schemaVersion": 2,
+                      "mediaType": "application/vnd.oci.image.index.v1+json",
+                      "manifests": [
+                        {
+                          "mediaType": "application/vnd.oci.image.manifest.v1+json",
+                          "digest": "sha256:210a9f9e8134fc77940ea17f971adcf8752e36b513eb7982223caa1120774284",
+                          "size": 811,
+                          "artifactType": "application/vnd.ms.bicep.module.sources"
+                        },
+                        ...
+                */
+#pragma warning disable IL2026 // Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code
+                var referrersResponse = JsonSerializer.Deserialize<JsonElement>(response.Content.ToString());
+#pragma warning restore IL2026 // Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code
+                referrers = referrersResponse.TryGetPropertyByPath("manifests")
+                    ?.EnumerateArray()
+                    .Select<JsonElement, (string? artifactType, string? digest)>(
+                        m => (m.GetProperty("artifactType").GetString(), m.GetProperty("digest").GetString()))
+                    .Where(m => m.artifactType is not null && m.digest is not null)
+                    .Select(m => (m.artifactType!, m.digest!));
             }
 
-            /* Example result:
-                {
-                  "schemaVersion": 2,
-                  "mediaType": "application/vnd.oci.image.index.v1+json",
-                  "manifests": [
-                    {
-                      "mediaType": "application/vnd.oci.image.manifest.v1+json",
-                      "digest": "sha256:210a9f9e8134fc77940ea17f971adcf8752e36b513eb7982223caa1120774284",
-                      "size": 811,
-                      "artifactType": "application/vnd.ms.bicep.module.sources"
-                    },
-                    ...
-            */
-            var referrersResponse = JsonSerializer.Deserialize<JsonElement>(response.Content.ToString());
-            return referrersResponse.TryGetPropertyByPath("manifests")
-                ?.EnumerateArray()
-                .Select<JsonElement, (string? artifactType, string? digest)>(
-                    m => (m.GetProperty("artifactType").GetString(), m.GetProperty("digest").GetString()))
-                .Where(m => m.artifactType is not null && m.digest is not null)
-                .Select(m => (m.artifactType!, m.digest!))
-                ?? Enumerable.Empty<(string, string)>();
+            return referrers ?? Enumerable.Empty<(string, string)>();
         }
 
         private async Task<Stream?> GetBicepSourcesAsync(ContainerRegistryContentClient client, OciArtifactModuleReference moduleReference, string mainManifestDigest)
@@ -155,7 +160,7 @@ namespace Bicep.Core.Registry
             var sourceDigests = referrers.Where(r => r.artifactType == BicepMediaTypes.BicepModuleSourcesArtifactType).Select(r => r.digest);
             if (sourceDigests?.Count() > 1)
             {//asdfg testpoint?
-                Trace.WriteLine($"Multiple source manifests found for module {moduleReference.FullyQualifiedReference}, ignoring. "
+                Trace.WriteLine($"Multiple source manifests found for module {moduleReference.FullyQualifiedReference}, ignoring all."
                 + $"Module manifest: ${mainManifestDigest}. "
                 + $"Source referrers: {string.Join(", ", sourceDigests)}");
             }
@@ -220,8 +225,9 @@ namespace Bicep.Core.Registry
                 annotations[LanguageConstants.OciOpenContainerImageDescriptionAnnotation] = description;
             }
 
-            // This is important to ensure any sources manifests will always point to a unique module manifest,
-            //   even if something in the sources changes that doesn't affect the compiled output.
+            // Adding a timestamp is important to ensure any sources manifests will always point to a unique module
+            //   manifest, even if something in the sources changes that doesn't affect the compiled output.
+            // And it can be useful as well.
             annotations[LanguageConstants.OciOpenContainerImageCreatedAnnotation] = DateTime.UtcNow.ToRFC3339();
 
             var manifest = new OciManifest(2, null, artifactType, configDescriptor, layerDescriptors, null, annotations);
