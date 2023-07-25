@@ -23,31 +23,6 @@ using Microsoft.WindowsAzure.ResourceStack.Common.Extensions;
 using OciDescriptor = Bicep.Core.Registry.Oci.OciDescriptor;
 using OciManifest = Bicep.Core.Registry.Oci.OciManifest;
 
-// asdfg anthony says create hash from modified sources
-
-//asdfg ITestDataSource?
-
-//asdfg source mapping?  var features = new FeatureProviderOverrides(TestContext, RegistryEnabled: dataSet.HasExternalModules, SourceMappingEnabled: true);
-
-// asdfg cyclic dependencies?
-// asdfg what about references to other external modules?
-/*
- e.g.:
- module m1 'br/public:samples/hello-world:1.0.2' = {
-   name: 'm1'
-   params: {
-     name: 'me myself'
-   }
- }
-=>
-    {
-      "uri": "file:///Users/stephenweatherford/repos/template-examples/bicep/modules/publicRegistry/helloWorld/main.bicep",
-      "localPath": "main.bicep",
-      "kind": "bicep"
-    },
-
-*/
-
 namespace Bicep.Core.Registry
 {
     public class AzureContainerRegistryManager
@@ -166,7 +141,7 @@ namespace Bicep.Core.Registry
             }
             else if (sourceDigests?.SingleOrDefault() is string sourcesManifestDigest)
             {
-                var sourcesManifest = await client.GetManifestAsync(sourcesManifestDigest);
+                var sourcesManifest = await client.GetManifestAsync(sourcesManifestDigest); //asdfgasdfg testpoint
                 var sourcesManifestStream = sourcesManifest.Value.Manifest.ToStream();
                 var dm = DeserializeManifest(sourcesManifestStream);
                 var sourceLayer = dm.Layers.FirstOrDefault(l => l.MediaType == BicepMediaTypes.BicepModuleSourcesV1Layer);
@@ -395,7 +370,7 @@ namespace Bicep.Core.Registry
             return blobResult.Value.Content.ToStream();
         }
 
-        private static void ProcessConfig(OciDescriptor config)
+        private static void ProcessConfig(OciDescriptor config) //asdfg make nested function?
         {
             // media types are case insensitive
             if (!string.Equals(config.MediaType, BicepMediaTypes.BicepModuleConfigV1, MediaTypeComparison))

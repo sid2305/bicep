@@ -28,7 +28,7 @@ using static Bicep.Core.Samples.DataSet;
 namespace Bicep.Core.IntegrationTests
 {
     [TestClass]
-    public class RegistryTests //asdfgasdfg
+    public class RegistryTests //asdfgasdfg tests
     {
         private static ServiceBuilder Services => new ServiceBuilder();
         private static readonly IServiceProvider EmptyServiceProvider = new Mock<IServiceProvider>(MockBehavior.Loose).Object;
