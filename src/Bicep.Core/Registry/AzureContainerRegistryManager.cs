@@ -200,17 +200,16 @@ namespace Bicep.Core.Registry
             var configDescriptor = DescriptorFactory.CreateDescriptor(algorithmIdentifier, config);
 
             config.ResetStream();
-            var result1 = await blobClient.UploadBlobAsync(config.Stream);//asdfg
+            _ = await blobClient.UploadBlobAsync(config.Stream);
 
             var layerDescriptors = new List<OciDescriptor>(layers.Length);
             foreach (var layer in layers)
             {
-                layer.ResetStream();
                 var layerDescriptor = DescriptorFactory.CreateDescriptor(algorithmIdentifier, layer);
                 layerDescriptors.Add(layerDescriptor);
 
                 layer.ResetStream();
-                var result2 = await blobClient.UploadBlobAsync(layer.Stream);//asdfg
+                _ = await blobClient.UploadBlobAsync(layer.Stream);
             }
 
             var annotations = new Dictionary<string, string>();
