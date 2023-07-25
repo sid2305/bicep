@@ -25,7 +25,7 @@ namespace Bicep.LanguageServer.Handlers
     /// Handles textDocument/bicepCache LSP requests. These are sent by clients that are resolving contents of document URIs using the bicep-cache:// scheme.
     /// The BicepDefinitionHandler returns such URIs when definitions are inside modules that reside in the local module cache.
     /// </summary>
-    public class BicepRegistryCacheRequestHandler : IJsonRpcRequestHandler<BicepRegistryCacheParams, BicepRegistryCacheResponse>
+    public class BicepRegistryCacheRequestHandler : IJsonRpcRequestHandler<BicepRegistryCacheParams, BicepRegistryCacheResponse> //asdfgasdfg tests
     {
         public const string BicepCacheLspMethod = "textDocument/bicepCache";
 

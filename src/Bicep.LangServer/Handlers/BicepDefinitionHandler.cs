@@ -153,7 +153,7 @@ namespace Bicep.LanguageServer.Handlers
                 new() { Start = new(0, 0), End = new(0, 0) });
         }
 
-        private Uri GetModuleSourceLinkUri(ISourceFile sourceFile, ModuleReference moduleReference) //asdfg
+        private Uri GetModuleSourceLinkUri(ISourceFile sourceFile, ModuleReference moduleReference) //asdfgasdfg test
         {
             if (!this.CanClientAcceptRegistryContent() || !moduleReference.IsExternal)
             {
@@ -277,7 +277,6 @@ namespace Bicep.LanguageServer.Handlers
                 return new();
             }
 
-            var parameterDeclarations = bicepSemanticModel.Root.Syntax.Children.OfType<ParameterDeclarationSyntax>();
             var parameterDeclarationSymbol = paramsSemanticModel.TryGetParameterDeclaration(param);
 
             if (parameterDeclarationSymbol is null)
@@ -341,7 +340,7 @@ namespace Bicep.LanguageServer.Handlers
             return new();
         }
 
-        private LocationOrLocationLinks GetFileDefinitionLocation( //asdfg
+        private LocationOrLocationLinks GetFileDefinitionLocation( //asdfgasdfg test
             Uri fileUri,
             SyntaxBase originalSelectionSyntax,
             CompilationContext context,

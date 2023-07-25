@@ -11,7 +11,7 @@ using System.Text;
 namespace Bicep.Core.UnitTests.Registry
 {
     [TestClass]
-    public class DescriptorFactoryTests
+    public class DescriptorFactoryTests //asdfgasdfg tests
     {
         [TestMethod]
         public void UnknownAlgorithmShouldThrow()
