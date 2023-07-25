@@ -56,9 +56,12 @@
   * GetReferrersAsync (called)
   * GetBicepSourcesAsync (called)
 
-## namespace Bicep.Core.UnitTests.Registry.DescriptorFactoryTests
-## namespace Bicep.Core.UnitTests.Registry.ModuleDispatcherTests
 ## namespace Bicep.Core.UnitTests.Registry.OciModuleRegistryTests
+### Covers
+* ociModuleRegistry.TryGetDocumentationUri/TryGetDescription
+### TODO asdfg
+* [ ] everything else
+
 ## namespace Bicep.Core.UnitTests.Registry.SourceArchiveTests
 
 ### Bicep.LanguageServer.Handlers.BicepRegistryCacheRequestHandler

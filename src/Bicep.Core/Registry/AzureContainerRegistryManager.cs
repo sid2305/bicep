@@ -39,7 +39,7 @@ namespace Bicep.Core.Registry
         }
 
         [SuppressMessage("Trimming", "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code", Justification = "Relying on references to required properties of the generic type elsewhere in the codebase.")]
-        public async Task<OciArtifactResult> PullArtifactAsync(RootConfiguration configuration, OciArtifactModuleReference moduleReference)
+        public async Task<OciArtifactResult> PullModuleArtifactsAsync(RootConfiguration configuration, OciArtifactModuleReference moduleReference, bool includeSources = true)
         {
             ContainerRegistryContentClient client;
             OciManifest manifest;
@@ -72,10 +72,15 @@ namespace Bicep.Core.Registry
                 (client, manifest, manifestStream, mainManifestDigest) = await DownloadMainManifestInternalAsync(anonymousAccess: true);
             }
 
-            // Continue using the client that worked for the rest of the calls
+            // Continue using the client that worked for the rest of our calls
 
-            var moduleStream = await ProcessManifest(client, manifest);
-            Stream? sourcesStream = await GetBicepSourcesAsync(client, moduleReference, mainManifestDigest);
+            var moduleStream = await GetModuleArmTemplateFromManifest(client, manifest);
+            Stream? sourcesStream = null;
+
+            if (includeSources)
+            {
+                sourcesStream = await GetBicepSourcesAsync(client, moduleReference, mainManifestDigest);
+            }
 
             return new OciArtifactResult(mainManifestDigest, manifest, manifestStream, moduleStream, sourcesStream);
         }
@@ -163,7 +168,7 @@ namespace Bicep.Core.Registry
         //asdfg https://github.com/oras-project/artifacts-spec/blob/main/scenarios.md
 
 
-        public async Task PushArtifactAsync(RootConfiguration configuration, OciArtifactModuleReference moduleReference, string? artifactType, StreamDescriptor config, Stream? bicepSources/*asdfg dono't pass this in*/, string? documentationUri = null, string? description = null, params StreamDescriptor[] layers)
+        public async Task PushModuleArtifactsAsync(RootConfiguration configuration, OciArtifactModuleReference moduleReference, string? artifactType, StreamDescriptor config, Stream? bicepSources/*asdfg dono't pass this in*/, string? documentationUri = null, string? description = null, params StreamDescriptor[] layers)
         {
             // TODO: How do we choose this? Does it ever change?
             var algorithmIdentifier = DescriptorFactory.AlgorithmIdentifierSha256;
@@ -309,7 +314,7 @@ namespace Bicep.Core.Registry
             }
         }
 
-        private static async Task<Stream> ProcessManifest(ContainerRegistryContentClient client, OciManifest manifest)
+        private static async Task<Stream> GetModuleArmTemplateFromManifest(ContainerRegistryContentClient client, OciManifest manifest)
         {
             // Bicep versions before 0.14 used to publish modules without the artifactType field set in the OCI manifest,
             // so we must allow null here
@@ -318,7 +323,7 @@ namespace Bicep.Core.Registry
                 throw new InvalidModuleException($"Expected OCI artifact to have the artifactType field set to either null or '{BicepMediaTypes.BicepModuleArtifactType}' but found '{manifest.ArtifactType}'.", InvalidModuleExceptionKind.WrongArtifactType);
             }
 
-            ProcessConfig(manifest.Config);
+            ValidateConfig(manifest.Config);
             if (manifest.Layers.Length != 1)
             {
                 throw new InvalidModuleException("Expected a single layer in the OCI artifact.");
@@ -326,51 +331,51 @@ namespace Bicep.Core.Registry
 
             var layer = manifest.Layers.Single();
 
-            return await ProcessLayer(client, layer);
+            return await ProcessMainManifestLayer(client, layer);
         }
 
-        private static void ValidateBlobResponse(Response<DownloadRegistryBlobResult> blobResponse, OciDescriptor descriptor)
+        private static async Task<Stream> ProcessMainManifestLayer(ContainerRegistryContentClient client, OciDescriptor layer)
         {
+            if (!string.Equals(layer.MediaType, BicepMediaTypes.BicepModuleLayerV1Json, MediaTypeComparison))
+            {
+                throw new InvalidModuleException($"Expected main module manifest layer to have media type \"{layer.MediaType}\", but found \"{ layer.MediaType }\"", InvalidModuleExceptionKind.WrongModuleLayerMediaType);
+            }
+
+            return await DownloadBlobAsync(client, layer.Digest, layer.Size);
+        }
+
+        private static async Task<Stream> DownloadBlobAsync(ContainerRegistryContentClient client, string digest, long expectedSize)
+        {
+            Response<DownloadRegistryBlobResult> blobResponse;
+            try
+            {
+                blobResponse = await client.DownloadBlobContentAsync(digest);
+            }
+            catch (RequestFailedException exception) when (exception.Status == 404)
+            {
+                throw new InvalidModuleException($"Could not find container registry blob with digest \"{digest}\".", exception);
+            }
+
             var stream = blobResponse.Value.Content.ToStream();
 
-            if (descriptor.Size != stream.Length)
+            if (expectedSize != stream.Length)
             {
-                throw new InvalidModuleException($"Expected blob size of {descriptor.Size} bytes but received {stream.Length} bytes from the registry.");
+                throw new InvalidModuleException($"Expected container registry blob with digest {digest} to have a size of {expectedSize} bytes but it contains {stream.Length} bytes.");
             }
 
             stream.Position = 0;
             string digestFromContents = DescriptorFactory.ComputeDigest(DescriptorFactory.AlgorithmIdentifierSha256, stream);
             stream.Position = 0;
 
-            if (!string.Equals(descriptor.Digest, digestFromContents, DigestComparison))
+            if (!string.Equals(digest, digestFromContents, DigestComparison))
             {
-                throw new InvalidModuleException($"There is a mismatch in the layer digests. Received content digest = {digestFromContents}, Requested digest = {descriptor.Digest}");
+                throw new InvalidModuleException($"There is a mismatch in the module's container registry digests. Received content digest = {digestFromContents}, requested digest = {digest}");
             }
+
+            return blobResponse.Value.Content.ToStream();
         }
 
-        private static async Task<Stream> ProcessLayer(ContainerRegistryContentClient client, OciDescriptor layer)
-        {
-            if (!string.Equals(layer.MediaType, BicepMediaTypes.BicepModuleLayerV1Json, MediaTypeComparison))
-            {
-                throw new InvalidModuleException($"Did not expect layer media type \"{layer.MediaType}\".", InvalidModuleExceptionKind.WrongModuleLayerMediaType);
-            }
-
-            Response<DownloadRegistryBlobResult> blobResult;
-            try
-            {
-                blobResult = await client.DownloadBlobContentAsync(layer.Digest);
-            }
-            catch (RequestFailedException exception) when (exception.Status == 404)
-            {
-                throw new InvalidModuleException($"Module manifest refers to a non-existent blob with digest \"{layer.Digest}\".", exception);
-            }
-
-            ValidateBlobResponse(blobResult, layer);
-
-            return blobResult.Value.Content.ToStream();
-        }
-
-        private static void ProcessConfig(OciDescriptor config) //asdfg make nested function?
+        private static void ValidateConfig(OciDescriptor config) //asdfg make nested function?
         {
             // media types are case insensitive
             if (!string.Equals(config.MediaType, BicepMediaTypes.BicepModuleConfigV1, MediaTypeComparison))

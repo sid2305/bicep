@@ -85,8 +85,8 @@ namespace Bicep.Core.Registry
         {
             try
             {
-                // Get module
-                await this.client.PullArtifactAsync(configuration, reference);
+                // Try getting module
+                await this.client.PullModuleArtifactsAsync(configuration, reference, includeSources: false);
             }
             catch (RequestFailedException exception) when (exception.Status == 404)
             {
@@ -229,7 +229,7 @@ namespace Bicep.Core.Registry
 
             try
             {
-                await this.client.PushArtifactAsync(configuration, moduleReference, BicepMediaTypes.BicepModuleArtifactType, config, bicepSources, documentationUri, description, layer);
+                await this.client.PushModuleArtifactsAsync(configuration, moduleReference, BicepMediaTypes.BicepModuleArtifactType, config, bicepSources, documentationUri, description, layer);
             }
             catch (AggregateException exception) when (CheckAllInnerExceptionsAreRequestFailures(exception))
             {
@@ -325,7 +325,7 @@ namespace Bicep.Core.Registry
         {
             try
             {
-                var result = await this.client.PullArtifactAsync(configuration, reference);
+                var result = await this.client.PullModuleArtifactsAsync(configuration, reference);
 
                 await this.TryWriteModuleContentToCacheAsync(reference, result);
 

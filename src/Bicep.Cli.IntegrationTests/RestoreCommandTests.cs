@@ -162,7 +162,7 @@ namespace Bicep.Cli.IntegrationTests
                 compiledStream.Write(TemplateEmitter.UTF8EncodingWithoutBom.GetBytes(dataSet.Compiled!));
                 compiledStream.Position = 0;
 
-                await containerRegistryManager.PushArtifactAsync(
+                await containerRegistryManager.PushModuleArtifactsAsync(
                     configuration: configuration,
                     moduleReference: moduleReference!,
                     // intentionally setting artifactType to null to simulate a publish done by an older version of Bicep
