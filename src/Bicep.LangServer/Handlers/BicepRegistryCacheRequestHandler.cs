@@ -67,6 +67,7 @@ namespace Bicep.LanguageServer.Handlers
 
             // asdfg tracing
             if (moduleDispatcher.TryGetModuleSources(moduleReference, out var sourceArchive)) { //asdfg eg file:///Users/stephenweatherford/.bicep/br/sawbicep.azurecr.io/storage/test$/main.json
+                //asdfg testpoint
                 using (var sources = sourceArchive)
                 {
                     var sourcesCombined = sources.GetMetadataContentsAsdfgDeleteMe();
@@ -83,8 +84,8 @@ namespace Bicep.LanguageServer.Handlers
             }
 
             // No sources available asdfg
-            if (!this.fileResolver.TryRead(uri, out var contents, out var failureBuilder)) //asdfgasdfg
-            {
+            if (!this.fileResolver.TryRead(uri, out var contents, out var failureBuilder)) //asdfg
+            { //asdfg testpoint
                 var message = failureBuilder(DiagnosticBuilder.ForDocumentStart()).Message;
                 throw new InvalidOperationException($"Unable to read file '{uri}'. {message}");
             }

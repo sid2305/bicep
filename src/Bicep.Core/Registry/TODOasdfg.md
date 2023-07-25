@@ -70,3 +70,19 @@ AzureContainerRegistryManager asdfg p1 (currently only integration tests?)
 
 publish
 BicepDefinitionHandler
+
+## Sources to test
+### Bicep.Core.Registry.OciModuleRegistry  asdfg
+* [ ] TryGetSources
+### AzureContainerRegistryManager asdfg
+* [ ] GetReferrersAsync
+* [ ] GetBicepSourcesAsync
+### Bicep.LanguageServer.Handlers.BicepDefinitionHandler asdfg
+* [ ] HandleModuleReference?
+* [ ] GetModuleSourceLinkUri?
+* [ ] HandleUnboundSymbolLocation?
+  * [ ] && context.Compilation.SourceFileGrouping.TryGetSourceFile(moduleDeclarationSyntax) is ISourceFile sourceFile
+* [ ] HandleModuleReference?
+* [ ] GetModuleSourceLinkUri?
+### Bicep.LanguageServer.Handlers.BicepRegistryCacheRequestHandler asdfg
+* [ ] Handle
