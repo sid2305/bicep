@@ -170,25 +170,30 @@ public class SourceArchiveTests
     //asdfg
     //[DataRow(
     //    "my other.bicep",
-    //    "my other.bicep", "my other.bicep",
+    //    "my other.bicep",
     //    DisplayName = "HandlesPathsCorrectly: spaces")]
     //[DataRow(
     //    "sub folder/sub folder 2/my other bicep.bicep",
-    //    "sub folder/sub folder 2/my other bicep.bicep", "sub folder/sub folder 2/my other bicep.bicep",
+    //    "sub folder/sub folder 2/my other bicep.bicep",
     //    DisplayName = "HandlesPathsCorrectly: relative subpaths")]
     [DataRow(
         "/my root/my other bicep.bicep",
-        "../my other bicep.bicep", "../my other bicep.bicep",
+        "../my other bicep.bicep",
         DisplayName = "HandlesPathsCorrectly: ..")]
+    [DataRow(
+        "/my other bicep.bicep",
+        "../../my other bicep.bicep",
+        DisplayName = "HandlesPathsCorrectly: ../..")]
     //asdfg ..
     //asdfg paths with query strings
     //asdfg module cache locations
     public void HandlesPathsCorrectly(
         string pathRelativeToMainBicepLocation,
         string expectedArchivedUri,
-        string expectedArchivedPath)
+        string? expectedArchivedPath = null)
     {
         string mainBicepPath = "/my root/my project/my main.bicep";
+        expectedArchivedPath ??= expectedArchivedUri;
 
         Uri entrypointUri = DocumentUri.FromFileSystemPath(mainBicepPath).ToUri();
         var fs = new MockFileSystem();
