@@ -65,18 +65,23 @@ namespace Bicep.LanguageServer.Handlers
                 throw new InvalidOperationException($"Unable to obtain the entry point URI for module '{moduleReference.FullyQualifiedReference}'.");
             }
 
-            // asdfg tracing
+            // asdfg tracing 
             if (moduleDispatcher.TryGetModuleSources(moduleReference, out var sourceArchive)) { //asdfg eg file:///Users/stephenweatherford/.bicep/br/sawbicep.azurecr.io/storage/test$/main.json
                 //asdfg testpoint
                 using (var sources = sourceArchive)
                 {
-                    var sourcesCombined = sources.GetMetadataContentsAsdfgDeleteMe();
-                    sourcesCombined += "\n==================================================================\n";
+                    var sortedSources = sources.GetSourceFiles()
+                        .OrderBy(item => item.Metadata.Uri == sources.GetEntrypointUri())
+                        .ThenBy(item => item.Metadata.Uri);
+
+                    var sourcesCombined = "EXPERIMENTAL FEATURE, UNDER DEVELOPMENT!\n\nSource files that were published:\n\n"
+                        + sources.GetMetadataContentsAsdfgDeleteMe();
+                    sourcesCombined += "\n\n==================================================================\n";
                     sourcesCombined +=
                         string.Join(
                             "\n==================================================================\n",
-                            sources.GetSourceFiles()
-                            .Select(m => $"{m.Metadata.Uri}:\n\n{m.Contents}\n")
+                            sortedSources
+                            .Select(m => $"SOURCE FILE: {m.Metadata.Uri}:\n\n{m.Contents}\n")
                             .ToArray());
 
                     return Task.FromResult(new BicepRegistryCacheResponse(sourcesCombined));

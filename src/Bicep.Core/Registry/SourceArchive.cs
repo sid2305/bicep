@@ -17,90 +17,6 @@ using System.Linq;
 
 namespace Bicep.Core.Registry;
 
-// asdfg fix regression: opening template spec or arm templates doesn't show in JSON editor
-// asdfg analyzer failures will show in editor that would have been ignored with bicepconfig.json
-// asdfg okay to show location of template spec refs?  I assume they're in the compiled ARM json anyway?
-// asdfg loadContent files?  they don't currently show up in sources
-// asdfg option to not publish sources?
-// asdfg hide under capabilities
-// asdfg anthony (marcin?) said we should built off of the modified bicep (stripped comments)...  correct?
-//     asdfg what about formatting JSON?
-
-// asdfg remove user info from paths in __metadata.json
-// asdfg built json
-// asdfg paths: absolute or relative or both?
-//   e.g.
-/*
- {
-  "entryPoint": "file:///Users/stephenweatherford/repos/template-examples/bicep/modules/complicated/my%20entrypoint.bicep",
-  "sourceFiles": [
-    {
-      "uri": "/Users/stephenweatherford/.bicep/br/mcr.microsoft.com/bicep$app$app-configuration/1.0.1$/main.json",
-      "localPath": "main.json",
-      "kind": "armTemplate"
-    },
-    {
-      "uri": "/Users/stephenweatherford/.bicep/br/mcr.microsoft.com/bicep$samples$hello-world/1.0.2$/main.json",
-      "localPath": "main.json",
-      "kind": "armTemplate"
-    },
-    {
-      "uri": "file:///Users/stephenweatherford/repos/template-examples/bicep/modules/simpleModule/storageAccount.bicep",
-      "localPath": "storageAccount.bicep",
-      "kind": "bicep"
-    },
-    {
-      "uri": "/Users/stephenweatherford/.bicep/br/mcr.microsoft.com/bicep$app$dapr-containerapps-environment/1.2.2$/main.json",
-      "localPath": "main.json",
-      "kind": "armTemplate"
-    },
-    {
-      "uri": "/Users/stephenweatherford/.bicep/ts/e5ef2b13-6478-4887-ad57-1aa6b9475040/sawbicep/storagespec/2.0a/main.json",
-      "localPath": "main.json",
-      "kind": "templateSpec"
-    },
-    {
-      "uri": "file:///Users/stephenweatherford/repos/template-examples/bicep/modules/complicated/my%20entrypoint.bicep",
-      "localPath": "my%20entrypoint.bicep",
-      "kind": "bicep"
-    },
-    {
-      "uri": "file:///Users/stephenweatherford/repos/template-examples/bicep/modules/complicated/modules/main.bicep",
-      "localPath": "main.bicep",
-      "kind": "bicep"
-    },
-    {
-      "uri": "/Users/stephenweatherford/.bicep/ts/e5ef2b13-6478-4887-ad57-1aa6b9475040/sawbicep/storagespec/1.0a/main.json",
-      "localPath": "main.json",
-      "kind": "templateSpec"
-    }
-  ]
-}
- */
-// asdfg example: relative to ancestor of entrypoint:
-/*
- module relativePath '../simpleModule/storageAccount.bicep' = {
-    =>
-     {
-  "uri": "file:///Users/stephenweatherford/repos/template-examples/bicep/modules/simpleModule/storageAccount.bicep",
-  "localPath": "storageAccount.bicep",
-  "kind": "bicep"
-},
-
- */
-//asdfg same module could be referenced in different ways in different places
-
-// asdfg template spec e.g.:
-// module tsModule 'ts:e5ef2b13-6478-4887-ad57-1aa6b9475040/sawbicep/storageSpec:1.0a' = {
-// =>
-// /Users/stephenweatherford/.bicep/ts/e5ef2b13-6478-4887-ad57-1aa6b9475040/sawbicep/storagespec/1.0a/main.json:
-
-// asdfg should I decompress sources.zip?
-// asdfg pretty-print JSON?
-// asdfg remove comments from bicep
-// asdfg show bicep sources for nested modules?
-//     /Users/stephenweatherford/.bicep/br/mcr.microsoft.com/bicep$app$dapr-containerapps-environment/1.2.2$/main.json:
-
 public class SourceArchive : IDisposable
 {
     private ZipArchive? zipArchive;
@@ -108,6 +24,8 @@ public class SourceArchive : IDisposable
     const string SourceKind_Bicep = "bicep";
     const string SourceKind_ArmTemplate = "armTemplate";
     const string SourceKind_TemplateSpec = "templateSpec";
+    const string MetadataArchivedFileName = "__metadata.json";
+
     // IF ADDING TO THIS: Remember both forwards and backwards compatibility.
     // Previous versions must be able to deal with unrecognized source kinds.   asdfg test
 
@@ -122,9 +40,9 @@ public class SourceArchive : IDisposable
     //}
 
     public record FileMetadata(
-        Uri Uri,          // required
-        string LocalPath, // required
-        string Kind       // required
+        Uri Uri,             // required
+        string ArchivedPath, // required
+        string Kind          // required
     );
 
     // asdfg test that deserializing this with unknown properties works
@@ -242,7 +160,7 @@ public class SourceArchive : IDisposable
 
             var metadata = new Metadata(entryFileUri, filesMetadata);
             string metadataJson = JsonSerializer.Serialize(metadata, new JsonSerializerOptions() { WriteIndented = true, PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-            WriteNewEntry(zipArchive, "__metadata.json", metadataJson); //asdfg no collisions
+            WriteNewEntry(zipArchive, MetadataArchivedFileName, metadataJson); //asdfg no collisions
         }
 
         stream.Seek(0, SeekOrigin.Begin);
@@ -250,7 +168,7 @@ public class SourceArchive : IDisposable
     }
 
     public string GetMetadataContentsAsdfgDeleteMe() {
-        return GetRequiredEntryContents("__metadata.json"); //asdfg magic
+        return GetRequiredEntryContents(MetadataArchivedFileName);
     }
 
     public IEnumerable<(FileMetadata Metadata, string Contents)> GetSourceFiles()
@@ -263,18 +181,18 @@ public class SourceArchive : IDisposable
         var metadata = GetMetadata();
         foreach (var entry in metadata.SourceFiles) //asdfg entrypoint first
         {
-            yield return (entry, GetRequiredEntryContents(entry.LocalPath));
+            yield return (entry, GetRequiredEntryContents(entry.ArchivedPath));
         }
     }
     [SuppressMessage("Trimming", "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code", Justification = "<Pending>")]
     private Metadata GetMetadata()
     {
-        var metadataJson = GetRequiredEntryContents("__metadata.json"); //asdfg magic
+        var metadataJson = GetRequiredEntryContents(MetadataArchivedFileName);
         var metadata = JsonSerializer.Deserialize<Metadata>(metadataJson, new JsonSerializerOptions() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase })
-            ?? throw new ArgumentException($"Unable to deserialize metadata from {"__metadata.json"}");
+            ?? throw new ArgumentException($"Unable to deserialize metadata from archived file \"{MetadataArchivedFileName}\"");
         if (metadata is null)
         {
-            throw new ArgumentException($"Unable to deserialize metadata from {"__metadata.json"}");
+            throw new ArgumentException($"Unable to deserialize metadata from archived file \"{MetadataArchivedFileName}\"");
         }
 
         return metadata;

@@ -71,7 +71,7 @@ metadata description = 'fake bicep file'";
                   ""sourceFiles"": [
                     {
                       ""uri"": ""file:///main.bicep"",
-                      ""localPath"": ""main.bicep"",
+                      ""archivedPath"": ""main.bicep"",
                       ""kind"": ""bicep"",
                       ""I am also recognition challenged"": ""Hi, Mom!""
                     }
@@ -106,7 +106,7 @@ metadata description = 'fake bicep file'";
                   ""sourceFiles"": [
                     {
                       ""uri"": ""file:///main.bicep"",
-                      ""localPath"": ""main.bicep"",
+                      ""archivedPath"": ""main.bicep"",
                       ""kind"": ""bicep""
                     }
                   ]
@@ -139,7 +139,7 @@ metadata description = 'fake bicep file'";
                   ""sourceFiles"": [
                     {
                       ""uri"": ""file:///main.bicep"",
-                      ""localPath"": ""main.bicep"",
+                      ""archivedPath"": ""main.bicep"",
                       ""kind"": ""bicep"",
                       ""I am also recognition challenged"": ""Hi, Mom!""
                     }
