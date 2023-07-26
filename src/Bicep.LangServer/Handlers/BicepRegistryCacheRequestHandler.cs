@@ -71,17 +71,17 @@ namespace Bicep.LanguageServer.Handlers
                 using (var sources = sourceArchive)
                 {
                     var sortedSources = sources.GetSourceFiles()
-                        .OrderBy(item => item.Metadata.Uri == sources.GetEntrypointUri().AbsoluteUri)
-                        .ThenBy(item => item.Metadata.Uri);
+                        .OrderBy(item => item.Metadata.Path == sources.GetEntrypointPath())
+                        .ThenBy(item => item.Metadata.Path);
 
                     var sourcesCombined = "EXPERIMENTAL FEATURE, UNDER DEVELOPMENT!\n\nSource files that were published:\n\n"
-                        + sources.GetMetadataContentsAsdfgDeleteMe();
+                        + sources.GetMetadataFileContents();
                     sourcesCombined += "\n\n==================================================================\n";
                     sourcesCombined +=
                         string.Join(
                             "\n==================================================================\n",
                             sortedSources
-                            .Select(m => $"SOURCE FILE: {m.Metadata.Uri}:\n\n{m.Contents}\n")
+                            .Select(m => $"SOURCE FILE: {m.Metadata.Path}:\n\n{m.Contents}\n")
                             .ToArray());
 
                     return Task.FromResult(new BicepRegistryCacheResponse(sourcesCombined));

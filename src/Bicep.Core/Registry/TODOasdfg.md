@@ -36,11 +36,15 @@
         string GetOriginalSource();
     }
 
-
 * compilationWriter.ToStream(compilation, compiledArmTemplateStream); //asdfgasdfg this is what is used to write main arm template (from bicep)
 * PublishCommandTests
 * nested modules
 * local modules
+
+# WHEN REMOVING EXPERIMENTAL asdfg
+* Set metadataVersion to 1
+* Fail in a friendly way on metadataVersion too large
+* 
 
 
 # LATER

@@ -152,50 +152,56 @@ public class SourceArchiveTests
 
         SourceArchive sourceArchive = new SourceArchive(stream);
 
-        sourceArchive.GetEntrypointUri().Should().Be(mainBicep.FileUri);
+        sourceArchive.GetEntrypointPath().Should().Be("main.bicep");
 
         var archivedFiles = sourceArchive.GetSourceFiles().ToArray();
         archivedFiles.Should().BeEquivalentTo(
             new (SourceArchive.FileMetadata, string)[] {
-                (new (mainBicep.FileUri.AbsoluteUri, "main.bicep", SourceArchive.SourceKind_Bicep), MainDotBicepOriginalSource),
-                (new (mainJson.FileUri.AbsoluteUri, "main.json", SourceArchive.SourceKind_ArmTemplate), MainDotJsonSource ),
-                (new (standaloneJson.FileUri.AbsoluteUri, "standalone.json", SourceArchive.SourceKind_ArmTemplate), StandaloneJsonSource),
-                (new (templateSpecMainJson.FileUri.AbsoluteUri, "Main%20template.json"/*asdfg?*/, SourceArchive.SourceKind_TemplateSpec),  TemplateSpecJsonSource),
-                (new (localModuleJson.FileUri.AbsoluteUri, "localModule.json", SourceArchive.SourceKind_ArmTemplate),  LocalModuleDotJsonSource),
+                (new ("main.bicep", "main.bicep", SourceArchive.SourceKind_Bicep), MainDotBicepOriginalSource),
+                (new ("main.json", "main.json", SourceArchive.SourceKind_ArmTemplate), MainDotJsonSource ),
+                (new ("standalone.json", "standalone.json", SourceArchive.SourceKind_ArmTemplate), StandaloneJsonSource),
+                (new ("Main template.json", "Main template.json", SourceArchive.SourceKind_TemplateSpec),  TemplateSpecJsonSource),
+                (new ("localModule.json", "localModule.json", SourceArchive.SourceKind_ArmTemplate),  LocalModuleDotJsonSource),
             });
     }
 
     [DataTestMethod]
+    //[DataRow(asdfg
+    //    "my other.bicep",
+    //    "file:///my%20project/my%20sources/my%20other.bicep", "my other.bicep",
+    //    DisplayName = "HandlesPathsCorrectly: spaces")]
     [DataRow(
-        "/my project/my sources/", "my bicep.bicep",
-        "file:///my%20project/my%20sources/my%20bicep.bicep", "my bicep.bicep",
-        DisplayName = "spaces")]
-    [DataRow(
-        "/my project/my sources/", "sub folder/sub folder 2/my bicep.bicep",
-        "file:///my%20project/my%20sources/sub%20folder/sub%20folder%202/my%20bicep.bicep", "sub folder/sub folder 2/my bicep.bicep",
-        DisplayName = "relative subpaths")]
+        "sub folder/sub folder 2/my other bicep.bicep",
+        "sub folder/sub folder 2/my other bicep.bicep", "sub folder/sub folder 2/my other bicep.bicep",
+        DisplayName = "HandlesPathsCorrectly: relative subpaths")]
+    //asdfg relative URIs that aren't files
+    //asdfg paths with query strings
+    //asdfg module cache locations
     public void HandlesPathsCorrectly(
-        string projectFolderPath,
-        string pathRelativeToProjectFolder,
+        string pathRelativeToMainBicepLocation,
         string expectedArchivedUri,
         string expectedArchivedPath)
     {
-        Uri projectFolder = DocumentUri.FromFileSystemPath(projectFolderPath).ToUri();
+        string mainBicepPath = "/my project/my main.bicep";
+
+        Uri entrypointUri = DocumentUri.FromFileSystemPath(mainBicepPath).ToUri();
         var fs = new MockFileSystem();
-        fs.AddDirectory(projectFolder.LocalPath);
 
-        var file = CreateSourceFile(fs, projectFolder, pathRelativeToProjectFolder, SourceArchive.SourceKind_Bicep, "param p1 string");
+        var mainBicepFolder = new Uri(Path.GetDirectoryName(mainBicepPath) ?? throw new Exception($"bad {mainBicepPath}"), UriKind.Absolute);
+        fs.AddDirectory(mainBicepFolder.LocalPath);
 
-        using var stream = SourceArchive.PackSources(file.FileUri, file);
+        var mainBicep = CreateSourceFile(fs, mainBicepFolder, Path.GetFileName(mainBicepPath), SourceArchive.SourceKind_Bicep, "metadata description = 'main bicep file'");
+        var testFile = CreateSourceFile(fs, mainBicepFolder, pathRelativeToMainBicepLocation, SourceArchive.SourceKind_Bicep, "metadata description = 'secondary file'");
+
+        using var stream = SourceArchive.PackSources(mainBicep.FileUri, mainBicep, testFile);
 
         SourceArchive sourceArchive = new SourceArchive(stream);
 
-        sourceArchive.GetEntrypointUri().AbsoluteUri.Should().Contain("%20");
-        sourceArchive.GetEntrypointUri().Should().Be(file.FileUri);
+        sourceArchive.GetEntrypointPath().Should().Be("my main.bicep");
 
-        sourceArchive.GetSourceFiles().Should().HaveCount(1);
-        sourceArchive.GetSourceFiles().Single().Metadata.Uri.Should().Be(expectedArchivedUri);
-        sourceArchive.GetSourceFiles().Single().Metadata.ArchivedPath.Should().Be(expectedArchivedPath);
+        var testFileMetadata = sourceArchive.GetSourceFiles().Single(f => f.Metadata.Path != "my main.bicep");
+        testFileMetadata.Metadata.Path.Should().Be(expectedArchivedUri);
+        testFileMetadata.Metadata.ArchivedPath.Should().Be(expectedArchivedPath);
     }
 
     //[TestMethod] asdfg
@@ -240,7 +246,7 @@ public class SourceArchiveTests
                   ""I am an unrecognized property name"": {},
                   ""sourceFiles"": [
                     {
-                      ""uri"": ""file:///main.bicep"",
+                      ""path"": ""file:///main.bicep"",
                       ""archivedPath"": ""main.bicep"",
                       ""kind"": ""bicep"",
                       ""I am also recognition challenged"": ""Hi, Mom!""
@@ -259,7 +265,7 @@ public class SourceArchiveTests
 
         file.Metadata.Kind.Should().Be("bicep");
         file.Contents.Should().Be("bicep contents");
-        file.Metadata.Uri.Should().Contain("main.bicep");
+        file.Metadata.Path.Should().Contain("main.bicep");
     }
 
     [TestMethod]
@@ -275,7 +281,7 @@ public class SourceArchiveTests
                   ""entryPoint"": ""file:///main.bicep"",
                   ""sourceFiles"": [
                     {
-                      ""uri"": ""file:///main.bicep"",
+                      ""path"": ""file:///main.bicep"",
                       ""archivedPath"": ""main.bicep"",
                       ""kind"": ""bicep""
                     }
@@ -293,7 +299,7 @@ public class SourceArchiveTests
 
         file.Metadata.Kind.Should().Be("bicep");
         file.Contents.Should().Be("bicep contents");
-        file.Metadata.Uri.Should().Contain("main.bicep");
+        file.Metadata.Path.Should().Contain("main.bicep");
     }
 
     [TestMethod]
@@ -308,7 +314,7 @@ public class SourceArchiveTests
                   ""I am an unrecognized property name"": {},
                   ""sourceFiles"": [
                     {
-                      ""uri"": ""file:///main.bicep"",
+                      ""path"": ""file:///main.bicep"",
                       ""archivedPath"": ""main.bicep"",
                       ""kind"": ""bicep"",
                       ""I am also recognition challenged"": ""Hi, Mom!""
@@ -331,7 +337,7 @@ public class SourceArchiveTests
 
         file.Metadata.Kind.Should().Be("bicep");
         file.Contents.Should().Be("bicep contents");
-        file.Metadata.Uri.Should().Contain("main.bicep");
+        file.Metadata.Path.Should().Contain("main.bicep");
     }
 
     private Stream CreateZipFileStream(params (string relativePath, string contents)[] files)

@@ -14,6 +14,7 @@ using System.Text;
 using Bicep.Core.Navigation;
 using System.IO.Abstractions;
 using System.Linq;
+using static Bicep.Core.Registry.SourceArchive;
 
 namespace Bicep.Core.Registry;
 
@@ -40,16 +41,22 @@ public class SourceArchive : IDisposable
     //    // IF ADDING TO THIS: Remember both forwards and backwards compatibility.
     //    //   Previous versions of Bicep must be able to ignore what is added.
     //}
+    //asdfg path too long for archive
+    //asdfg path contains bad characters for archive
+
+    // WARNING: Only change this value if there is a breaking change such that old versions of Bicep should fail on reading this source archive
+    public const int CurrentMetadataVersion = 0; // TODO(asdfg): Change to 1 when removing experimental flag
 
     public record FileMetadata(
-        string Uri,          // required in all Bicep versions
-        string ArchivedPath, // required in all Bicep versions
-        string Kind          // required in all Bicep versions
+        string Path,         // the location, relative to the main.bicep file's folder, for the file that will be shown to the end user (required in all Bicep versions)
+        string ArchivedPath, // the location (relative to root) of where the file is stored in the archive
+        string Kind          // kind of source
     );
 
     public record Metadata(
-        string EntryPoint, // Uri (required in all Bicep versions)
-        IEnumerable<FileMetadata> SourceFiles // required in all Bicep versions
+        int MetadataVersion,
+        string EntryPoint, // Path of the entrypoint file
+        IEnumerable<FileMetadata> SourceFiles
     );
 
     //asdfg    private IFileSystem fileSystem;
@@ -90,16 +97,16 @@ public class SourceArchive : IDisposable
         this.zipArchive = new ZipArchive(stream, ZipArchiveMode.Read);
     }
 
-    private string GetRequiredEntryContents(string relativePath)
+    private string GetEntryContents(string archivedPath)
     {
         if (zipArchive is null)
         {
             throw new ObjectDisposedException(nameof(SourceArchive));
         }
 
-        if (zipArchive.GetEntry(relativePath) is not ZipArchiveEntry entry)
+        if (zipArchive.GetEntry(archivedPath) is not ZipArchiveEntry entry)
         {
-            throw new Exception($"Could not find expected entry in archived module sources \"{relativePath}\"");
+            throw new Exception($"Could not find expected entry in archived module sources \"{archivedPath}\"");
         }
 
         using var entryStream = entry.Open();
@@ -107,9 +114,9 @@ public class SourceArchive : IDisposable
         return sr.ReadToEnd();
     }
 
-    public Uri GetEntrypointUri()
+    public string GetEntrypointPath()
     {
-        return new Uri(GetMetadata().EntryPoint, UriKind.Absolute);
+        return GetMetadata().EntryPoint;
     }
 
     public static Stream PackSources(SourceFileGrouping sourceFileGrouping)
@@ -117,11 +124,24 @@ public class SourceArchive : IDisposable
         return PackSources(sourceFileGrouping.EntryFileUri, sourceFileGrouping.SourceFiles.ToArray());
     }
 
-    [SuppressMessage("Trimming", "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code", Justification = "<Pending>")]
-    public static Stream PackSources(Uri entryFileUri, params ISourceFile[] sourceFiles)
+    public static Stream PackSources(Uri entrypointFileUri, params ISourceFile[] sourceFiles)
     {
-        //asdfg how structure hierarchy of files?
-        //asdfg map of locations to filenames
+        //var entrypoints = sourceFiles.Where(f => f.FileUri.Equals(entrypointFileUri)).ToArray();
+        //if (entrypoints .Length == 0)
+        //{
+        //    throw new ArgumentException($"{nameof(SourceArchive)}.{nameof(PackSources)}: No source file with entrypoint \"{entrypointFileUri.AbsoluteUri}\" was passed in.");
+        //}
+        //else if (entrypoints.Length > 1)
+        //{
+        //    throw new ArgumentException($"{nameof(SourceArchive)}.{nameof(PackSources)}: Multiple source files with the entrypoint \"{entrypointFileUri.AbsoluteUri}\" were passed in.");
+        //}
+
+        //asdfg don't let any files conflict with entrypoint path
+        string? entryPointPath = null;
+
+        var baseFolderBuilder = new UriBuilder(entrypointFileUri);
+        baseFolderBuilder.Path = string.Join("", entrypointFileUri.Segments.SkipLast(1));
+        var baseFolderUri = baseFolderBuilder.Uri;
 
         var stream = new MemoryStream();
         using (ZipArchive zipArchive = new ZipArchive(stream, ZipArchiveMode.Create, leaveOpen: true))
@@ -142,22 +162,45 @@ public class SourceArchive : IDisposable
                 };
 
                 //asdfg map folder structure, duplicates, remove user info, relative paths, absolute paths, uris, etc.
-                var sourceRelativeDestinationPath = Path.GetFileName(file.FileUri.LocalPath);
-                WriteNewEntry(zipArchive, sourceRelativeDestinationPath, source);
-                filesMetadata.Add(new(file.FileUri.AbsoluteUri, sourceRelativeDestinationPath, kind));
+                var paths = GetFilePaths(file.FileUri);
+                WriteNewEntry(zipArchive, paths.archivedPath, source);
+                filesMetadata.Add(new FileMetadata(paths.location, paths.archivedPath, kind));
+
+                if (file.FileUri == entrypointFileUri)
+                {
+                    if (entryPointPath is not null)
+                    { //asdfg testpoint
+                        throw new ArgumentException($"{nameof(SourceArchive)}.{nameof(PackSources)}: Multiple source files with the entrypoint \"{entrypointFileUri.AbsoluteUri}\" were passed in.");
+                    }
+
+                    entryPointPath = paths.location;
+                }
             }
 
-            var metadata = new Metadata(entryFileUri.AbsoluteUri, filesMetadata);
-            string metadataJson = JsonSerializer.Serialize(metadata, new JsonSerializerOptions() { WriteIndented = true, PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-            WriteNewEntry(zipArchive, MetadataArchivedFileName, metadataJson); //asdfg no collisions
+            if (entryPointPath is null)
+            {
+                throw new ArgumentException($"{nameof(SourceArchive)}.{nameof(PackSources)}: No source file with entrypoint \"{entrypointFileUri.AbsoluteUri}\" was passed in.");
+            }
+
+            // Add the __metadata.json file
+            var metadataContents = CreateMetadataFileContents(entryPointPath, filesMetadata);
+            WriteNewEntry(zipArchive, MetadataArchivedFileName, metadataContents); //asdfg no collisions with __metadata.json or any other file
         }
 
         stream.Seek(0, SeekOrigin.Begin);
         return stream;
+
+        (string location, string archivedPath) GetFilePaths(Uri uri)
+        {
+            Uri relativeUri = baseFolderUri.MakeRelativeUri(uri);
+            var relativeLocation  = Uri.UnescapeDataString(relativeUri.OriginalString);
+            return (relativeLocation, relativeLocation);
+        }
     }
 
-    public string GetMetadataContentsAsdfgDeleteMe() {
-        return GetRequiredEntryContents(MetadataArchivedFileName);
+    public string GetMetadataFileContents()
+    {
+        return GetEntryContents(MetadataArchivedFileName);
     }
 
     public IEnumerable<(FileMetadata Metadata, string Contents)> GetSourceFiles()
@@ -170,18 +213,31 @@ public class SourceArchive : IDisposable
         var metadata = GetMetadata();
         foreach (var entry in metadata.SourceFiles) //asdfg entrypoint first
         {
-            yield return (entry, GetRequiredEntryContents(entry.ArchivedPath));
+            yield return (entry, GetEntryContents(entry.ArchivedPath));
         }
     }
+
+    [SuppressMessage("Trimming", "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code", Justification = "<Pending>")]
+    private static string CreateMetadataFileContents(string entrypointPath, IEnumerable<FileMetadata> files)
+    {
+        // Add the __metadata.json file
+        var metadata = new Metadata(CurrentMetadataVersion, entrypointPath, files);
+        return JsonSerializer.Serialize(metadata, new JsonSerializerOptions() { WriteIndented = true, PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+    }
+
     [SuppressMessage("Trimming", "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code", Justification = "<Pending>")]
     private Metadata GetMetadata()
     {
-        var metadataJson = GetRequiredEntryContents(MetadataArchivedFileName);
+        var metadataJson = GetEntryContents(MetadataArchivedFileName);
         var metadata = JsonSerializer.Deserialize<Metadata>(metadataJson, new JsonSerializerOptions() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase })
             ?? throw new ArgumentException($"Unable to deserialize metadata from archived file \"{MetadataArchivedFileName}\"");
         if (metadata is null)
         {
             throw new ArgumentException($"Unable to deserialize metadata from archived file \"{MetadataArchivedFileName}\"");
+        }
+
+        if (metadata.MetadataVersion > CurrentMetadataVersion) {
+            throw new Exception($"Source archive contains a metadata file with metadata version {metadata.MetadataVersion}, which this version of Bicep cannot handle. Please upgrade Bicep.");
         }
 
         return metadata;
