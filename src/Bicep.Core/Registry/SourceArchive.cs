@@ -21,9 +21,11 @@ public class SourceArchive : IDisposable
 {
     private ZipArchive? zipArchive;
 
+    //asdfg enum or something?
     public const string SourceKind_Bicep = "bicep";
     public const string SourceKind_ArmTemplate = "armTemplate";
     public const string SourceKind_TemplateSpec = "templateSpec";
+
     public const string MetadataArchivedFileName = "__metadata.json";
 
     // IF ADDING TO THIS: Remember both forwards and backwards compatibility.
@@ -40,16 +42,14 @@ public class SourceArchive : IDisposable
     //}
 
     public record FileMetadata(
-        Uri Uri,             // required
-        string ArchivedPath, // required
-        string Kind          // required
+        string Uri,          // required in all Bicep versions
+        string ArchivedPath, // required in all Bicep versions
+        string Kind          // required in all Bicep versions
     );
 
-    // asdfg test that deserializing this with unknown properties works
-    public record Metadata( //asdfg
-        Uri EntryPoint, //asdfg?
-                        //asdfg List<Dictionary<string, string>> SourceFiles
-        IEnumerable<FileMetadata> SourceFiles
+    public record Metadata(
+        string EntryPoint, // Uri (required in all Bicep versions)
+        IEnumerable<FileMetadata> SourceFiles // required in all Bicep versions
     );
 
     //asdfg    private IFileSystem fileSystem;
@@ -109,7 +109,7 @@ public class SourceArchive : IDisposable
 
     public Uri GetEntrypointUri()
     {
-        return GetMetadata().EntryPoint;
+        return new Uri(GetMetadata().EntryPoint, UriKind.Absolute);
     }
 
     public static Stream PackSources(SourceFileGrouping sourceFileGrouping)
@@ -132,33 +132,22 @@ public class SourceArchive : IDisposable
 
             foreach (var file in sourceFiles)
             {
-                string source;
-                string kind;
-                switch (file)
+                string source = file.GetOriginalSource();
+                string kind = file switch
                 {
-                    case BicepFile bicepFile:
-                        source = bicepFile.ProgramSyntax.ToTextPreserveFormatting(); //asdfg?
-                        kind = SourceKind_Bicep;
-                        break;
-                    case ArmTemplateFile armTemplateFile:
-                        source = armTemplateFile.Template?.ToJson() ?? "(ARM template is null)"; //asdfg testpoint
-                        kind = SourceKind_ArmTemplate;
-                        break;
-                    case TemplateSpecFile templateSpecFile:
-                        source = templateSpecFile.MainTemplateFile.Template?.ToJson() ?? "(ARM template is null)"; //asdfg testpoint
-                        kind = SourceKind_TemplateSpec;
-                        break;
-                    default:
-                        throw new ArgumentException($"Unexpected source file type {file.GetType().Name}"); //asdfg?
-                }
+                    BicepFile bicepFile => SourceKind_Bicep,
+                    ArmTemplateFile armTemplateFile => SourceKind_ArmTemplate,
+                    TemplateSpecFile => SourceKind_TemplateSpec,
+                    _ => throw new ArgumentException($"Unexpected source file type {file.GetType().Name}"),
+                };
 
                 //asdfg map folder structure, duplicates, remove user info, relative paths, absolute paths, uris, etc.
-                var sourceRelativeDestinationPath = Path.GetFileName(file.FileUri.AbsolutePath);
+                var sourceRelativeDestinationPath = Path.GetFileName(file.FileUri.LocalPath);
                 WriteNewEntry(zipArchive, sourceRelativeDestinationPath, source);
-                filesMetadata.Add(new(file.FileUri, sourceRelativeDestinationPath, kind));
+                filesMetadata.Add(new(file.FileUri.AbsoluteUri, sourceRelativeDestinationPath, kind));
             }
 
-            var metadata = new Metadata(entryFileUri, filesMetadata);
+            var metadata = new Metadata(entryFileUri.AbsoluteUri, filesMetadata);
             string metadataJson = JsonSerializer.Serialize(metadata, new JsonSerializerOptions() { WriteIndented = true, PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
             WriteNewEntry(zipArchive, MetadataArchivedFileName, metadataJson); //asdfg no collisions
         }

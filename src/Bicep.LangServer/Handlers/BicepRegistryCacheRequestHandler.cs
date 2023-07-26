@@ -60,18 +60,18 @@ namespace Bicep.LanguageServer.Handlers
                 throw new InvalidOperationException($"The module '{moduleReference.FullyQualifiedReference}' has not yet been successfully restored.");
             }
 
-            if (!moduleDispatcher.TryGetLocalModuleEntryPointUri(moduleReference, out var uri, out _)) //asdfg eg file:///Users/stephenweatherford/.bicep/br/sawbicep.azurecr.io/storage/test$/main.json
+            if (!moduleDispatcher.TryGetLocalModuleEntryPointUri(moduleReference, out var uri, out _))
             {
                 throw new InvalidOperationException($"Unable to obtain the entry point URI for module '{moduleReference.FullyQualifiedReference}'.");
             }
 
-            // asdfg tracing 
-            if (moduleDispatcher.TryGetModuleSources(moduleReference, out var sourceArchive)) { //asdfg eg file:///Users/stephenweatherford/.bicep/br/sawbicep.azurecr.io/storage/test$/main.json
+            // asdfg tracing
+            if (moduleDispatcher.TryGetModuleSources(moduleReference, out var sourceArchive)) {
                 //asdfg testpoint
                 using (var sources = sourceArchive)
                 {
                     var sortedSources = sources.GetSourceFiles()
-                        .OrderBy(item => item.Metadata.Uri == sources.GetEntrypointUri())
+                        .OrderBy(item => item.Metadata.Uri == sources.GetEntrypointUri().AbsoluteUri)
                         .ThenBy(item => item.Metadata.Uri);
 
                     var sourcesCombined = "EXPERIMENTAL FEATURE, UNDER DEVELOPMENT!\n\nSource files that were published:\n\n"

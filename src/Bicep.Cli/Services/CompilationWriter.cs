@@ -13,7 +13,7 @@ using System.Text;
 
 namespace Bicep.Cli.Services
 {
-    public class CompilationWriter
+    public class CompilationWriter //asdfg use this?
     {
         private readonly IOContext io;
 

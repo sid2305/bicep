@@ -1,5 +1,13 @@
 ﻿asdfg delete me
 
+# Questions for Bicep Issues
+* public interface ISourceFile
+    {
+        Uri FileUri { get; }
+        **string GetOriginalSource();**
+    }
+
+
 # TODOs asdfg
 * Version the sources.zip file?
 * Should entrypoint be json or bicep?
@@ -16,13 +24,32 @@
 * Minimum version that can read a particular sources files
 * Anthony says create hash from modified sources
 * ITestDataSource?
-* source mapping?  var features = new FeatureProviderOverrides(TestContext, RegistryEnabled: dataSet.HasExternalModules, SourceMappingEnabled: true);
+* source mapping?
+  * var features = new FeatureProviderOverrides(TestContext, RegistryEnabled: dataSet.HasExternalModules, SourceMappingEnabled: true);
+  * /// Creates a JsonTextWriter that is capable of generating a source map for the compiled JSON
 * zip or gzt or whatever?
+* need way to match .bicep with .json?
+* don't include main.json?
+*     public interface ISourceFile
+    {
+        Uri FileUri { get; }
+        string GetOriginalSource();
+    }
+
+
+* compilationWriter.ToStream(compilation, compiledArmTemplateStream); //asdfgasdfg this is what is used to write main arm template (from bicep)
+* PublishCommandTests
+* nested modules
+* local modules
+
+
+# LATER
+* [ ] loadContent files?  they don't currently show up in sources
+
 
 // asdfg fix regression: opening template spec or arm templates doesn't show in JSON editor
 // asdfg analyzer failures will show in editor that would have been ignored with bicepconfig.json
 // asdfg okay to show location of template spec refs?  I assume they're in the compiled ARM json anyway?
-// asdfg loadContent files?  they don't currently show up in sources
 // asdfg option to not publish sources?
 // asdfg hide under capabilities
 // asdfg anthony (marcin?) said we should built off of the modified bicep (stripped comments)...  correct?

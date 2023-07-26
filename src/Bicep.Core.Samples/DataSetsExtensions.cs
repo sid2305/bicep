@@ -186,7 +186,7 @@ namespace Bicep.Core.Samples
 
             var stream = new MemoryStream();
             using (var streamWriter = new StreamWriter(stream, leaveOpen: true))
-            using (var writer = new JsonTextWriter(streamWriter))
+            using (var writer = new JsonTextWriter(streamWriter)) //asdfgasdfg
             {
                 await result.Template.WriteToAsync(writer);
             }

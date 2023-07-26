@@ -56,7 +56,7 @@ namespace Bicep.Cli.Commands
 
             if (PathHelper.HasArmTemplateLikeExtension(inputUri))
             {
-                // Publishing an ARM template file.
+                // Publishing an ARM template file. asdfgasdfg original source straight from file path (only if main input file is json)   test   extract?
                 using var armTemplateStream = this.fileSystem.FileStream.New(inputPath, FileMode.Open, FileAccess.Read);
                 await this.PublishModuleAsync(moduleReference, armTemplateStream, null, documentationUri, overwriteIfExists);
 
