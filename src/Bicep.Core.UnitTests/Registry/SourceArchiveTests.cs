@@ -31,37 +31,49 @@ namespace Bicep.Core.UnitTests.Registry;
 public class SourceArchiveTests
 {
     [TestMethod]
-    public void asdfg()
+    public void PackSources_asdfg()
     {
         const string projectFolder = "/my project/my sources";
-        //const string bundleFolder = "/my module cache/my sources";
         var fs = new MockFileSystem();
         fs.AddDirectory(projectFolder);
-        const string mainBicepContents = @"targetScope = 'subscription'
-metadata description = 'fake bicep file'";
+
+        const string mainBicepContents = @"
+            targetScope = 'subscription'
+            metadata description = 'fake bicep file'";
         fs.AddFile(Path.Combine(projectFolder, "main.bicep"), mainBicepContents);
 
+        const string mainJsonContents = @"{
+          ""$schema"": ""https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#"",
+          ""contentVersion"": ""1.0.0.0"",
+          ""resources"": {},
+          ""parameters"": {
+            ""objectParameter"": {
+              ""type"": ""object""
+            }
+          }
+        }";
+        fs.AddFile(Path.Combine(projectFolder, "main.json"), mainJsonContents);
+
         var bicepMain = SourceFileFactory.CreateBicepFile(new Uri("file:///main.bicep"), mainBicepContents);
-        using var stream = SourceArchive.PackSources(bicepMain.FileUri, bicepMain);
+        var jsonMain = SourceFileFactory.CreateArmTemplateFile(new Uri("file:///main.json"), mainJsonContents);
+        using var stream = SourceArchive.PackSources(bicepMain.FileUri, bicepMain, jsonMain);
 
-        using var test = File.OpenWrite("/Users/stephenweatherford/test.zip"); //asdfg
-        stream.CopyTo(test);
-        test.Close();
-
-        stream.Seek(0, SeekOrigin.Begin);
-
-
-        //asdfg
-        //SourceBundle.UnpackSources()
         SourceArchive sourceArchive = new SourceArchive(stream);
 
-        //
+        sourceArchive.GetEntrypointUri().Should().Be(bicepMain.FileUri); //asdfg ?
+
+        var archivedFiles = sourceArchive.GetSourceFiles().ToArray();
+        archivedFiles.Should().BeEquivalentTo(
+            new (SourceArchive.FileMetadata, string)[] {
+                (new (bicepMain.FileUri, "main.bicep", SourceArchive.SourceKind_Bicep), mainBicepContents ),
+                (new (jsonMain.FileUri, "main.json", SourceArchive.SourceKind_ArmTemplate), mainJsonContents )
+            });
     }
 
     [TestMethod]
-    public void ForwardsCompat_ShouldIgnoreUnrecognizedPropertiesInMetadata()
+    public void GetSourceFiles_ForwardsCompat_ShouldIgnoreUnrecognizedPropertiesInMetadata()
     {
-        var zip = CreateZipFile(
+        var zip = CreateZipFileStream(
             (
                 "__metadata.json",
                 @"
@@ -93,11 +105,11 @@ metadata description = 'fake bicep file'";
     }
 
     [TestMethod]
-    public void BackwardsCompat_ShouldBeAbleToReadOldFormats()
+    public void GetSourceFiles_BackwardsCompat_ShouldBeAbleToReadOldFormats()
     {
         // DO NOT ADD TO THIS DATA - IT IS MEANT TO TEST READING
         // OLD FILE VERSIONS WITH MINIMAL DATA
-        var zip = CreateZipFile(
+        var zip = CreateZipFileStream(
             (
                 "__metadata.json",
                 @"
@@ -127,9 +139,9 @@ metadata description = 'fake bicep file'";
     }
 
     [TestMethod]
-    public void ForwardsCompat_ShouldIgnoreFileEntriesNotInMetadata()
+    public void GetSourceFiles_ForwardsCompat_ShouldIgnoreFileEntriesNotInMetadata()
     {
-        var zip = CreateZipFile(
+        var zip = CreateZipFileStream(
             (
                 "__metadata.json",
                 @"
@@ -164,7 +176,8 @@ metadata description = 'fake bicep file'";
         file.Metadata.Uri.AbsolutePath.Should().Contain("main.bicep");
     }
 
-    private Stream CreateZipFile(params (string relativePath, string contents)[] files) {
+    private Stream CreateZipFileStream(params (string relativePath, string contents)[] files)
+    {
         var stream = new MemoryStream();
         using (var archive = new ZipArchive(stream, ZipArchiveMode.Create, leaveOpen: true))
         {

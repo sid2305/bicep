@@ -21,10 +21,10 @@ public class SourceArchive : IDisposable
 {
     private ZipArchive? zipArchive;
 
-    const string SourceKind_Bicep = "bicep";
-    const string SourceKind_ArmTemplate = "armTemplate";
-    const string SourceKind_TemplateSpec = "templateSpec";
-    const string MetadataArchivedFileName = "__metadata.json";
+    public const string SourceKind_Bicep = "bicep";
+    public const string SourceKind_ArmTemplate = "armTemplate";
+    public const string SourceKind_TemplateSpec = "templateSpec";
+    public const string MetadataArchivedFileName = "__metadata.json";
 
     // IF ADDING TO THIS: Remember both forwards and backwards compatibility.
     // Previous versions must be able to deal with unrecognized source kinds.   asdfg test

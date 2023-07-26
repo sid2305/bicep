@@ -1,6 +1,8 @@
 ﻿asdfg delete me
 
 # TODOs asdfg
+* Version the sources.zip file?
+* Should entrypoint be json or bicep?
 * Make possible to have additional layers in main manifest
 * src/Bicep.Core/Registry/AzureContainerRegistryManager.cs -> rename?
 * Move sources stuff out of AzureContainerRegistryManager.cs
@@ -15,6 +17,7 @@
 * Anthony says create hash from modified sources
 * ITestDataSource?
 * source mapping?  var features = new FeatureProviderOverrides(TestContext, RegistryEnabled: dataSet.HasExternalModules, SourceMappingEnabled: true);
+* zip or gzt or whatever?
 
 // asdfg fix regression: opening template spec or arm templates doesn't show in JSON editor
 // asdfg analyzer failures will show in editor that would have been ignored with bicepconfig.json
