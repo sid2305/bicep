@@ -31,7 +31,7 @@ namespace Bicep.Core.UnitTests.Registry;
 public class SourceArchiveTests
 {
     [TestMethod]
-    public void PackSources_asdfg()
+    public void PackSources_asdfg() this fails
     {
         const string projectFolder = "/my project/my sources";
         var fs = new MockFileSystem();
