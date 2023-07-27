@@ -90,7 +90,7 @@ namespace Bicep.Core.Registry
         {
             IEnumerable<(string artifactType, string digest)>? referrers = null;
 
-            if (client.Pipeline is { } pipeline) // asdfg this guards against Bicep.Core.UnitTests.Registry.MockRegistryBlobClient which doesn't implement Pipeline.  Should it be implemented?
+            if (client.Pipeline is { } pipeline) // asdfg this guards against Bicep.Core.UnitTests.Registry.MockRegistryBlobClient which doesn't implement Pipeline.  Should it be implemented in tests?
             {
                 var request = client.Pipeline.CreateRequest();
                 request.Method = RequestMethod.Get;
@@ -107,7 +107,12 @@ namespace Bicep.Core.Registry
                 }
 
                 //asdfg test with responses that contain additional data
-                /* Example result:
+
+#pragma warning disable IL2026 // Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code
+                var referrersResponse = JsonSerializer.Deserialize<JsonElement>(response.Content.ToString());
+#pragma warning restore IL2026 // Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code
+
+                /* Example JSON result:
                     {
                       "schemaVersion": 2,
                       "mediaType": "application/vnd.oci.image.index.v1+json",
@@ -120,9 +125,7 @@ namespace Bicep.Core.Registry
                         },
                         ...
                 */
-#pragma warning disable IL2026 // Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code
-                var referrersResponse = JsonSerializer.Deserialize<JsonElement>(response.Content.ToString());
-#pragma warning restore IL2026 // Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code
+
                 referrers = referrersResponse.TryGetPropertyByPath("manifests")
                     ?.EnumerateArray()
                     .Select<JsonElement, (string? artifactType, string? digest)>(
