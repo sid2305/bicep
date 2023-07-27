@@ -16,6 +16,7 @@ using Bicep.Core.UnitTests.FileSystem;
 using Bicep.Core.Workspaces;
 using FluentAssertions;
 using Newtonsoft.Json.Linq;
+using MemoryStream = Bicep.Core.Debuggable.TextMemoryStream;
 
 namespace Bicep.Core.UnitTests.Utils
 {

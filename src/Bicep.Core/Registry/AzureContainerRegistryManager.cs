@@ -22,6 +22,7 @@ using Bicep.Core.Registry.Oci;
 using Microsoft.WindowsAzure.ResourceStack.Common.Extensions;
 using OciDescriptor = Bicep.Core.Registry.Oci.OciDescriptor;
 using OciManifest = Bicep.Core.Registry.Oci.OciManifest;
+using MemoryStream = Bicep.Core.Debuggable.TextMemoryStream;
 
 namespace Bicep.Core.Registry
 {
@@ -142,7 +143,7 @@ namespace Bicep.Core.Registry
             var referrers = await GetReferrersAsync(client, moduleReference, mainManifestDigest);
             var sourceDigests = referrers.Where(r => r.artifactType == BicepMediaTypes.BicepModuleSourcesArtifactType).Select(r => r.digest);
             if (sourceDigests?.Count() > 1)
-            {//asdfg testpoint?
+            {
                 Trace.WriteLine($"Multiple source manifests found for module {moduleReference.FullyQualifiedReference}, ignoring all."
                 + $"Module manifest: ${mainManifestDigest}. "
                 + $"Source referrers: {string.Join(", ", sourceDigests)}");
@@ -164,12 +165,6 @@ namespace Bicep.Core.Registry
 
             return null;
         }
-
-        //asdfg https://learn.microsoft.com/en-us/dotnet/api/overview/azure/containers.containerregistry-readme?view=azure-dotnet#upload-images
-        //asdfg https://learn.microsoft.com/en-us/azure/container-registry/container-registry-image-formats#oci-artifacts
-        // asdfg Azure Container Registry supports the OCI Distribution Specification, a vendor-neutral, cloud-agnostic spec to store, share, secure, and deploy container images and other content types (artifacts). The specification allows a registry to store a wide range of artifacts in addition to container images. You use tooling appropriate to the artifact to push and pull artifacts. For examples, see:
-        //asdfg https://github.com/oras-project/artifacts-spec/blob/main/scenarios.md
-
 
         public async Task PushModuleArtifactsAsync(RootConfiguration configuration, OciArtifactModuleReference moduleReference, string? artifactType, StreamDescriptor config, Stream? bicepSources/*asdfg dono't pass this in*/, string? documentationUri = null, string? description = null, params StreamDescriptor[] layers)
         {
@@ -227,6 +222,9 @@ namespace Bicep.Core.Registry
 
             if (bicepSources is not null)
             {
+                //
+                        // See more information here: https://learn.microsoft.com/en-us/azure/container-registry/container-registry-oci-artifacts
+
                 // asdfg remove current attachments (only if force??)
 
                 // Azure Container Registries won't recognize this as a valid attachment unless this is valid JSON, so write out an empty object

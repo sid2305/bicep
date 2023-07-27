@@ -5,14 +5,18 @@ using System;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Threading.Tasks;
+using Bicep.Core.Configuration;
 using Bicep.Core.Features;
 using Bicep.Core.Modules;
 using Bicep.Core.Registry;
+using Bicep.Core.UnitTests.Assertions;
 using Bicep.Core.UnitTests.Mock;
 using Bicep.Core.UnitTests.Utils;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Moq;
 using OmniSharp.Extensions.LanguageServer.Protocol;
+using MemoryStream = Bicep.Core.Debuggable.TextMemoryStream;
 
 namespace Bicep.Core.UnitTests.Registry
 {
@@ -21,6 +25,8 @@ namespace Bicep.Core.UnitTests.Registry
     {
         [NotNull]
         public TestContext? TestContext { get; set; }
+
+        #region GetDocumentationUri
 
         [DataRow("")]
         [DataRow("    ")]
@@ -287,6 +293,10 @@ namespace Bicep.Core.UnitTests.Registry
             result.Should().BeEquivalentTo("https://github.com/Azure/bicep-registry-modules/tree/app/dapr-containerapps-environment/bicep/core/1.0.1/modules/app/dapr-containerapps-environment/bicep/core/README.md");
         }
 
+        #endregion GetDocumentationUri
+
+        #region GetDescription
+
         [DataRow("")]
         [DataRow("    ")]
         [DataRow(null)]
@@ -510,17 +520,87 @@ namespace Bicep.Core.UnitTests.Registry
             actualDescription.Should().BeEquivalentTo(description.Replace("\\", "")); // unencode json
         }
 
-        private (OciModuleRegistry, OciArtifactModuleReference) GetOciModuleRegistryAndOciArtifactModuleReference(
-            string bicepFileContents,
+        #endregion GetDescription
+
+        #region PublishModule
+
+        [TestMethod]
+        public async Task asdfg()
+        {
+            string bicepContents = "output myOutput string = 'hello!'";
+            string jsonContents = @"{
+  ""$schema"": ""https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#"",
+  ""contentVersion"": ""1.0.0.0"",
+  ""metadata"": {
+    ""_generator"": {
+      ""name"": ""bicep"",
+      ""version"": ""0.19.5.34762"",
+      ""templateHash"": ""6661241730999253120""
+    }
+  },
+  ""resources"": [],
+  ""outputs"": {
+    ""myOutput"": {
+      ""type"": ""string"",
+      ""value"": ""hello!""
+    }
+  }
+}";
+            string manifestContents = "{}"; //asdfg
+
+            IContainerRegistryClientFactory ClientFactory = StrictMock.Of<IContainerRegistryClientFactory>().Object;
+
+            //asdfg?
+            //var dispatcher = ServiceBuilder.Create(s => s.WithDisabledAnalyzersConfiguration()
+            //    .AddSingleton(BicepTestConstants.ClientFactory)
+            //    .AddSingleton(BicepTestConstants.TemplateSpecRepositoryFactory))
+            //    .Construct<IModuleDispatcher>();
+
+            var blobClient = new MockRegistryBlobClient();
+            var clientFactory = StrictMock.Of<IContainerRegistryClientFactory>();
+            clientFactory
+                .Setup(m => m.CreateAuthenticatedBlobClient(It.IsAny<RootConfiguration>(), It.IsAny<Uri>(), It.IsAny<string>()))
+                .Returns(blobClient);
+
+            (OciModuleRegistry ociModuleRegistry, OciArtifactModuleReference moduleReference) = GetOciModuleRegistryAndOciArtifactModuleReference(
+                bicepContents,
+                manifestContents,
+                "testregistry.azurecr.io",
+                "bicep/modules/testrepo",
+                tag: "v1",
+                containerRegistryClientFactory: clientFactory.Object);
+
+            using var templateStream = CreateStream(jsonContents);
+            using var sourcesStream = CreateStream("This is a test. This is only a test. If this were a real source archive, it would have been binary.");
+            await ociModuleRegistry.PublishModule(moduleReference, templateStream, sourcesStream, "http://documentation", "description");
+
+            blobClient.Should().HaveModule("v1", templateStream);
+        }
+
+        #endregion
+
+        #region Helpers
+
+        private Stream CreateStream(string contents)
+        {
+            var stream = new MemoryStream();
+            using var writer = new StreamWriter(stream, System.Text.Encoding.UTF8, leaveOpen: true);
+            writer.Write(contents);
+            return stream;
+        }
+
+        private (OciModuleRegistry, OciArtifactModuleReference) GetOciModuleRegistryAndOciArtifactModuleReference( //asdfg rename?
+            string parentBicepFileContents, // The bicep file which references the module
             string manifestFileContents,
             string registory,
             string repository,
-            string? digest= null,
+            string? digest = null,
             string? tag = null,
-            bool cacheRootDirectory = true)
+            bool cacheRootDirectory = true,
+            IContainerRegistryClientFactory? containerRegistryClientFactory = null)
         {
             string testOutputPath = FileHelper.GetUniqueTestOutputPath(TestContext);
-            var bicepPath = FileHelper.SaveResultFile(TestContext, "input.bicep", bicepFileContents, testOutputPath);
+            var bicepPath = FileHelper.SaveResultFile(TestContext, "input.bicep", parentBicepFileContents, testOutputPath);
             var parentModuleUri = DocumentUri.FromFileSystemPath(bicepPath).ToUri();
 
             var ociArtifactModuleReference = OciArtifactModuleReferenceHelper.GetModuleReferenceAndSaveManifestFile(
@@ -533,7 +613,7 @@ namespace Bicep.Core.UnitTests.Registry
                 digest,
                 tag);
 
-            var ociModuleRegistry = new OciModuleRegistry(BicepTestConstants.FileResolver, BicepTestConstants.ClientFactory, GetFeatures(cacheRootDirectory, testOutputPath), BicepTestConstants.BuiltInConfiguration, parentModuleUri);
+            var ociModuleRegistry = new OciModuleRegistry(BicepTestConstants.FileResolver, containerRegistryClientFactory ?? BicepTestConstants.ClientFactory, GetFeatures(cacheRootDirectory, testOutputPath), BicepTestConstants.BuiltInConfiguration, parentModuleUri);
 
             return (ociModuleRegistry, ociArtifactModuleReference);
         }
@@ -553,5 +633,7 @@ namespace Bicep.Core.UnitTests.Registry
 
             return features.Object;
         }
+
+        #endregion Helpers
     }
 }

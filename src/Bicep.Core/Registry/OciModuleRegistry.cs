@@ -19,6 +19,7 @@ using Bicep.Core.Registry.Oci;
 using Bicep.Core.Semantics;
 using Bicep.Core.Tracing;
 using Newtonsoft.Json;
+using MemoryStream = Bicep.Core.Debuggable.TextMemoryStream;
 
 namespace Bicep.Core.Registry
 {

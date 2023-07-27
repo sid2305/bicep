@@ -29,6 +29,7 @@ using Bicep.Core.UnitTests.Baselines;
 using System;
 using System.Reflection;
 using System.Text.RegularExpressions;
+using MemoryStream = Bicep.Core.Debuggable.TextMemoryStream;
 
 namespace Bicep.Core.IntegrationTests.Emit
 {

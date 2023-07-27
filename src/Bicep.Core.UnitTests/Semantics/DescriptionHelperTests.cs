@@ -9,6 +9,7 @@ using Bicep.Core.TypeSystem;
 using Bicep.Core.Workspaces;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using MemoryStream = Bicep.Core.Debuggable.TextMemoryStream;
 
 namespace Bicep.Core.UnitTests.Semantics;
 

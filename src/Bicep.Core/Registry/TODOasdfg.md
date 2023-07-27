@@ -1,12 +1,6 @@
 ﻿asdfg delete me
 
 # Questions for Bicep Issues
-* public interface ISourceFile
-    {
-        Uri FileUri { get; }
-        **string GetOriginalSource();**
-    }
-
 
 # TODOs Triage asdfg
 
@@ -18,34 +12,21 @@
 * Make possible to have additional layers in main manifest
   * throw error if layer version is too large
 * Move sources stuff out of AzureContainerRegistryManager.cs
-* Why are integration tests so slow?
-  * ForceModuleRestoreShouldRestoreAllModules 2x
-    * 3s: await dataSet.PublishModulesToRegistryAsync(clientFactory);
-  * ForceModuleRestoreWithStuckFileLockShouldFailAfterTimeout
-  * **30s**: ModuleRestoreWithStuckFileLockShouldFailAfterTimeout
-* Make only relative, e.g.:
-   SOURCE FILE: file:///Users/stephenweatherford/repos/template-examples/bicep/modules/privateRegistry/helloWorld/main.bicep:
 * Minimum version that can read a particular sources files
-* Anthony says create hash from modified sources
-* ITestDataSource?
 * source mapping?
   * var features = new FeatureProviderOverrides(TestContext, RegistryEnabled: dataSet.HasExternalModules, SourceMappingEnabled: true);
   * /// Creates a JsonTextWriter that is capable of generating a source map for the compiled JSON
-* zip or gtz or whatever?
-* need way to match .bicep with .json?
-* don't include main.json?
-*     public interface ISourceFile
-    {
-        Uri FileUri { get; }
-        string GetOriginalSource();
-    }
-* show only entrypoint bicep file for now
-* compilationWriter.ToStream(compilation, compiledArmTemplateStream); //asdfgasdfg this is what is used to write main arm template (from bicep)
 * PublishCommandTests
 * nested modules
 * local modules
 
 # MVP BEFORE REMOVING EXPERIMENTAL FLAG asdfg
+* need way to match .bicep with .json?
+* don't include main.json?
+* zip or gtz or whatever?
+* Anthony says create hash from modified sources
+* [ ] Refactor AzureContainerRegistryManager?  Separate generic from Bicep-specific code
+  * Maybe some of it moves into OciModuleRegistry?
 * [ ] option to not publish sources?
 * [ ] okay to show location of template spec refs?  I assume they're in the compiled ARM json anyway?
 * [ ] option to not publish sources?
@@ -151,3 +132,14 @@ BicepDefinitionHandler
 * [ ] GetModuleSourceLinkUri?
 ### Bicep.LanguageServer.Handlers.BicepRegistryCacheRequestHandler asdfg
 * [ ] Handle
+
+
+
+# ENGINEERING
+* [ ] Rename BicepTestContents.ClientFactory
+* Why are integration tests so slow?
+  * ForceModuleRestoreShouldRestoreAllModules 2x
+    * 3s: await dataSet.PublishModulesToRegistryAsync(clientFactory);
+  * ForceModuleRestoreWithStuckFileLockShouldFailAfterTimeout
+  * **30s**: ModuleRestoreWithStuckFileLockShouldFailAfterTimeout
+* ITestDataSource?

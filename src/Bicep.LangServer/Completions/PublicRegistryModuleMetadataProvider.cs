@@ -20,6 +20,7 @@ using OmniSharp.Extensions.LanguageServer.Protocol.Server;
 using Bicep.Core.Modules;
 using Bicep.Core;
 using Bicep.Core.Registry;
+using MemoryStream = Bicep.Core.Debuggable.TextMemoryStream;
 
 namespace Bicep.LanguageServer.Providers
 {

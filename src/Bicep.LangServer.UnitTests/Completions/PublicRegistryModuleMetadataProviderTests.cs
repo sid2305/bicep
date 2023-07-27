@@ -34,6 +34,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using static Bicep.Core.UnitTests.Diagnostics.LinterRuleTests.UseRecentApiVersionRuleTests.GetAcceptableApiVersionsInvariantsTests;
+using MemoryStream = Bicep.Core.Debuggable.TextMemoryStream;
 
 namespace Bicep.LangServer.UnitTests.Completions
 {

@@ -27,7 +27,7 @@ namespace Bicep.Core.UnitTests.Assertions
 
         protected override string Identifier => nameof(MockRegistryBlobClient);
 
-        public AndConstraint<MockRegistryAssertions> HaveModule(string tag, Stream expectedModuleContent)
+        public AndConstraint<MockRegistryAssertions> HaveModule(string tag, Stream expectedMainJsonContent)
         {
             using (new AssertionScope())
             {
@@ -40,7 +40,7 @@ namespace Bicep.Core.UnitTests.Assertions
                 var manifestBytes = this.Subject.Manifests[manifestDigest];
                 using var manifestStream = MockRegistryBlobClient.WriteStream(manifestBytes);
                 var manifest = OciSerialization.Deserialize<OciManifest>(manifestStream);
-
+                manifest.Should().NotBeNull();
                 manifest.ArtifactType.Should().Be("application/vnd.ms.bicep.module.artifact", "artifact type should be correct");
 
                 var config = manifest.Config;
@@ -50,7 +50,7 @@ namespace Bicep.Core.UnitTests.Assertions
                 this.Subject.Blobs.Should().ContainKey(config.Digest, "config digest should exist");
 
                 var configBytes = this.Subject.Blobs[config.Digest];
-                configBytes.Should().BeEmpty("config should be empty");
+                configBytes.Should().BeEmpty("config blob should be empty");
 
                 manifest.Layers.Should().HaveCount(1, "modules should have a single layer");
                 var layer = manifest.Layers.Single();
@@ -61,10 +61,12 @@ namespace Bicep.Core.UnitTests.Assertions
                 var layerBytes = this.Subject.Blobs[layer.Digest];
                 ((long)layerBytes.Length).Should().Be(layer.Size);
 
-                var actual = MockRegistryBlobClient.WriteStream(layerBytes).FromJsonStream<JToken>();
-                var expected = expectedModuleContent.FromJsonStream<JToken>();
+                var actualMainJsonStream = MockRegistryBlobClient.WriteStream(layerBytes).FromJsonStream<JToken>(); //asdfg using
+                expectedMainJsonContent.Position = 0;
+                var expectedMainJsonStream = expectedMainJsonContent.FromJsonStream<JToken>();
+                expectedMainJsonStream.Should().NotBeNull();
 
-                actual.Should().DeepEqual(expected, "module content should match");
+                actualMainJsonStream.Should().DeepEqual(expectedMainJsonStream, "module content should match");
             }
 
             return new(this);
