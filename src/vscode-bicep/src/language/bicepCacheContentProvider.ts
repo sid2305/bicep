@@ -32,8 +32,7 @@ export class BicepCacheContentProvider
   onDidChange?: vscode.Event<vscode.Uri> | undefined;
 
   async provideTextDocumentContent(
-    // asdfg because non-fragment doesn't end with .bicep, not showing as bicep file in editor
-    uri: vscode.Uri, //asdfg eg 'bicep-cache:/Users/stephenweatherford/.bicep/br/sawbicep.azurecr.io/storage/test%24/main.json#br%3Asawbicep.azurecr.io%2Fstorage%3Atest'
+    uri: vscode.Uri,
     token: vscode.CancellationToken,
   ): Promise<string> {
     // Ask the language server for the sources for the cached module
@@ -71,7 +70,6 @@ export class BicepCacheContentProvider
   }
 
   private getModuleReferenceScheme(document: vscode.TextDocument) {
-    //asdfg
     const moduleReferenceWithLeadingSeparator = document.uri.path;
     const colonIndex = moduleReferenceWithLeadingSeparator.indexOf(":");
     if (colonIndex < 0) {

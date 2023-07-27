@@ -89,8 +89,8 @@ export async function createLanguageService(
   const clientOptions: lsp.LanguageClientOptions = {
     documentSelector: [{ language: bicepLanguageId }],
     initializationOptions: {
-      // this tells the server that this client can handle additional DocumentUri schemes
-      enableRegistryContent: true, //asdfg
+      // this tells the server that this client can handle additional DocumentUri schemes (e.g. bicep-cache://)
+      enableRegistryContent: true,
     },
     progressOnInitialization: true,
     outputChannel,
