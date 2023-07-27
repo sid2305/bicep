@@ -72,6 +72,9 @@
 
 
 # LATER
+* [ ] linter won't have bicepconfig.json
+* [ ] compiler won't have module aliases in bicepconfig.json
+* [ ] might be showing files from a newer version of Bicep
 * [ ] show multiple files
           public Task<BicepRegistryCacheResponse> Handle(BicepRegistryCacheParams request, CancellationToken cancellationToken) //asdfgasdfg
         {
