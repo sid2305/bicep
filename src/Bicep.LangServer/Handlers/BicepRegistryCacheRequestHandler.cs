@@ -19,7 +19,7 @@ namespace Bicep.LanguageServer.Handlers
     [Method(BicepRegistryCacheRequestHandler.BicepCacheLspMethod, Direction.ClientToServer)]
     public record BicepRegistryCacheParams(TextDocumentIdentifier TextDocument, string Target) : ITextDocumentIdentifierParams, IRequest<BicepRegistryCacheResponse>;
 
-    public record BicepRegistryCacheResponse(string Content); //asdfg
+    public record BicepRegistryCacheResponse(string Content);
 
     /// <summary>
     /// Handles textDocument/bicepCache LSP requests. These are sent by clients that are resolving contents of document URIs using the bicep-cache:// scheme.
@@ -66,31 +66,20 @@ namespace Bicep.LanguageServer.Handlers
             }
 
             // asdfg tracing
-            if (moduleDispatcher.TryGetModuleSources(moduleReference, out var sourceArchive)) {
+            if (moduleDispatcher.TryGetModuleSources(moduleReference, out var sourceArchive))
+            {
                 //asdfg testpoint
-                using (var sources = sourceArchive)
-                {
-                    var sortedSources = sources.GetSourceFiles()
-                        .OrderBy(item => item.Metadata.Path == sources.GetEntrypointPath())
-                        .ThenBy(item => item.Metadata.Path);
+                using var sources = sourceArchive; // Ensure dispose is called
 
-                    var sourcesCombined = "EXPERIMENTAL FEATURE, UNDER DEVELOPMENT!\n\nSource files that were published:\n\n"
-                        + sources.GetMetadataFileContents();
-                    sourcesCombined += "\n\n==================================================================\n";
-                    sourcesCombined +=
-                        string.Join(
-                            "\n==================================================================\n",
-                            sortedSources
-                            .Select(m => $"SOURCE FILE: {m.Metadata.Path}:\n\n{m.Contents}\n")
-                            .ToArray());
-
-                    return Task.FromResult(new BicepRegistryCacheResponse(sourcesCombined));
-                }
+                // For now, we just proffer the main file
+                var entrypointFile = sources.GetSourceFiles().Single(f => f.Metadata.Path == sourceArchive.GetEntrypointPath());
+                return Task.FromResult(new BicepRegistryCacheResponse(entrypointFile.Contents));
             }
 
-            // No sources available asdfg
-            if (!this.fileResolver.TryRead(uri, out var contents, out var failureBuilder)) //asdfg
-            { //asdfg testpoint
+            // No sources available, just retrieve the JSON source
+
+            if (!this.fileResolver.TryRead(uri, out var contents, out var failureBuilder))
+            {
                 var message = failureBuilder(DiagnosticBuilder.ForDocumentStart()).Message;
                 throw new InvalidOperationException($"Unable to read file '{uri}'. {message}");
             }

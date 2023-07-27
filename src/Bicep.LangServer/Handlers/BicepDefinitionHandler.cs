@@ -28,6 +28,7 @@ using Bicep.Core.Modules;
 using System.Net;
 using Bicep.Core.Navigation;
 using Bicep.Core.TypeSystem;
+using System.IO;
 
 namespace Bicep.LanguageServer.Handlers
 {
@@ -141,10 +142,9 @@ namespace Bicep.LanguageServer.Handlers
             return new();
         }
 
-        //asdfg
         private LocationOrLocationLinks HandleModuleReference(CompilationContext context, StringSyntax stringToken, ISourceFile sourceFile, ModuleReference moduleReference)
         {
-            // goto beginning of the module file. asdfgasdfg
+            // Return the correct link format so our language client can display the sources
             return GetFileDefinitionLocation(
                 GetModuleSourceLinkUri(sourceFile, moduleReference),
                 stringToken,
@@ -165,12 +165,24 @@ namespace Bicep.LanguageServer.Handlers
             // the client expectation when the user navigates to a file with a bicep-cache:// URI is to request file content
             // via the textDocument/bicepCache LSP request implemented in the BicepRegistryCacheRequestHandler.
 
-            // The file path and fully qualified reference may contain special characters (like :) that needs to be url-encoded.
-            var sourceFilePath = WebUtility.UrlEncode(sourceFile.FileUri.AbsolutePath); //asdfg eg /Users/stephenweatherford/.bicep/br/sawbicep.azurecr.io/storage/test$/main.json -> %2FUsers%2Fstephenweatherford%2F.bicep%2Fbr%2Fsawbicep.azurecr.io%2Fstorage%2Ftest%24%2Fmain.json
-            var fullyQualifiedReference = WebUtility.UrlEncode(moduleReference.FullyQualifiedReference); //asdfg eg br:sawbicep.azurecr.io/storage:test -> br%3Asawbicep.azurecr.io%2Fstorage%3Atest
+            var sourceFilePath = sourceFile.FileUri.AbsolutePath;
+
+            if (moduleDispatcher.TryGetModuleSources(moduleReference, out var sourceArchive)) {
+                using var sources = sourceArchive;
+
+                // Replace the local path (main.json) with the actual source entrypoint filename
+                var entrypointFilename = Path.GetFileName(sources.GetEntrypointPath());
+                sourceFilePath = Path.Join(Path.GetDirectoryName(sourceFilePath), entrypointFilename);
+            }
+
+            // The file path and fully qualified reference may contain special characters (like :) that need to be url-encoded.
+            sourceFilePath = WebUtility.UrlEncode(sourceFilePath);
+            var fullyQualifiedReference = WebUtility.UrlEncode(moduleReference.FullyQualifiedReference);
 
             // Encode the source file path as a path and the fully qualified reference as a fragment.
-            return new Uri($"bicep-cache:{fullyQualifiedReference}#{sourceFilePath}"); //asdfgasdfg eg  "bicep-cache:%2FUsers%2Fstephenweatherford%2F.bicep%2Fbr%2Fsawbicep.azurecr.io%2Fstorage%2Ftest%24%2Fmain.json#br%3Asawbicep.azurecr.io%2Fstorage%3Atest"
+            // Vs Code will pass it to our language client, which will respond by requesting the source to display via
+            //   a textDocument/bicepCache request (see BicepCacheHandler)
+            return new Uri($"bicep-cache:{fullyQualifiedReference}#{sourceFilePath}");
         }
 
         private static LocationOrLocationLinks HandleDeclaredDefinitionLocation(DefinitionParams request, SymbolResolutionResult result, DeclaredSymbol declaration)

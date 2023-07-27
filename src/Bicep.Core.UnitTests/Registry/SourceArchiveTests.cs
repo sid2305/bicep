@@ -31,10 +31,10 @@ namespace Bicep.Core.UnitTests.Registry;
 [TestClass]
 public class SourceArchiveTests
 {
-    private const string MainDotBicepOriginalSource = @"
+    private const string MainDotBicepSource = @"
         targetScope = 'subscription'
         // Module description
-        metadata description = 'fake bicep file'";
+        metadata description = 'fake main bicep file'";
 
     private const string MainDotJsonSource = @"{
         ""$schema"": ""https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#"",
@@ -48,6 +48,11 @@ public class SourceArchiveTests
         }
         }
     }";
+
+    private const string SecondaryDotBicepSource = @"
+        // Module description
+        metadata description = 'fake secondary bicep file'
+    ";
 
     private const string StandaloneJsonSource = @"{
         // This file is a module that was referenced directly via JSON
@@ -143,7 +148,7 @@ public class SourceArchiveTests
         fs.AddDirectory(projectFolder.LocalPath);
 
         // asdfg can you have bicepparams files?
-        var mainBicep = CreateSourceFile(fs, projectFolder, "main.bicep", SourceArchive.SourceKind_Bicep, MainDotBicepOriginalSource);
+        var mainBicep = CreateSourceFile(fs, projectFolder, "main.bicep", SourceArchive.SourceKind_Bicep, MainDotBicepSource);
         var mainJson = CreateSourceFile(fs, projectFolder, "main.json", SourceArchive.SourceKind_ArmTemplate, MainDotJsonSource);
         var standaloneJson = CreateSourceFile(fs, projectFolder, "standalone.json", SourceArchive.SourceKind_ArmTemplate, StandaloneJsonSource);
         var templateSpecMainJson = CreateSourceFile(fs, projectFolder, "Main template.json", SourceArchive.SourceKind_TemplateSpec, TemplateSpecJsonSource);
@@ -158,7 +163,7 @@ public class SourceArchiveTests
         var archivedFiles = sourceArchive.GetSourceFiles().ToArray();
         archivedFiles.Should().BeEquivalentTo(
             new (SourceArchive.FileMetadata, string)[] {
-                (new ("main.bicep", "main.bicep", SourceArchive.SourceKind_Bicep), MainDotBicepOriginalSource),
+                (new ("main.bicep", "main.bicep", SourceArchive.SourceKind_Bicep), MainDotBicepSource),
                 (new ("main.json", "main.json", SourceArchive.SourceKind_ArmTemplate), MainDotJsonSource ),
                 (new ("standalone.json", "standalone.json", SourceArchive.SourceKind_ArmTemplate), StandaloneJsonSource),
                 (new ("Main template.json", "Main template.json", SourceArchive.SourceKind_TemplateSpec),  TemplateSpecJsonSource),
@@ -168,41 +173,58 @@ public class SourceArchiveTests
 
     [DataTestMethod]
     //asdfg
-    //[DataRow(
-    //    "my other.bicep",
-    //    "my other.bicep",
-    //    DisplayName = "HandlesPathsCorrectly: spaces")]
-    //[DataRow(
-    //    "sub folder/sub folder 2/my other bicep.bicep",
-    //    "sub folder/sub folder 2/my other bicep.bicep",
-    //    DisplayName = "HandlesPathsCorrectly: relative subpaths")]
+    [DataRow(
+        "my other.bicep",
+        "my other.bicep",
+        DisplayName = "HandlesPathsCorrectly: spaces")]
+    [DataRow(
+        "/my root/my project/sub folder/my other bicep.bicep",
+        "sub folder/my other bicep.bicep",
+        DisplayName = "HandlesPathsCorrectly: subfolder")]
+    [DataRow(
+        "/my root/my project/sub folder/sub folder 2/my other bicep.bicep",
+        "sub folder/sub folder 2/my other bicep.bicep",
+        DisplayName = "HandlesPathsCorrectly: sub-subfolder")]
     [DataRow(
         "/my root/my other bicep.bicep",
         "../my other bicep.bicep",
-        DisplayName = "HandlesPathsCorrectly: ..")]
+        DisplayName = "HandlesPathsCorrectly: ..")] //asdfg not working - not putting into archive?
     [DataRow(
         "/my other bicep.bicep",
         "../../my other bicep.bicep",
         DisplayName = "HandlesPathsCorrectly: ../..")]
+    [DataRow(
+        "/folder/my other bicep.bicep",
+        "../../folder/my other bicep.bicep",
+        DisplayName = "HandlesPathsCorrectly: ../../folder")]
+    //[DataRow( //asdfg?   could possibly get this situation with cached modules on windows
+    //    "d:/folder/my other bicep.bicep",
+    //    "d:/folder/my other bicep.bicep", //asdfg??
+    //    DisplayName = "HandlesPathsCorrectly: separate drives")]
+    [DataRow(
+        "/my root/my project/my other bicep.bicep",
+        "d:/folder/my other bicep.bicep", //asdfg??
+        DisplayName = "HandlesPathsCorrectly: separate drives")]
     //asdfg ..
     //asdfg paths with query strings
     //asdfg module cache locations
+    //asdfg c:
     public void HandlesPathsCorrectly(
         string pathRelativeToMainBicepLocation,
         string expectedArchivedUri,
         string? expectedArchivedPath = null)
     {
-        string mainBicepPath = "/my root/my project/my main.bicep";
+        string mainBicepPath = MockUnixSupport.Path("c:/my root/my project/my main.bicep");
         expectedArchivedPath ??= expectedArchivedUri;
 
         Uri entrypointUri = DocumentUri.FromFileSystemPath(mainBicepPath).ToUri();
         var fs = new MockFileSystem();
-
+        
         var mainBicepFolder = new Uri(Path.GetDirectoryName(mainBicepPath)! + "/", UriKind.Absolute);
         fs.AddDirectory(mainBicepFolder.LocalPath);
 
-        var mainBicep = CreateSourceFile(fs, mainBicepFolder, Path.GetFileName(mainBicepPath), SourceArchive.SourceKind_Bicep, "metadata description = 'main bicep file'");
-        var testFile = CreateSourceFile(fs, mainBicepFolder, pathRelativeToMainBicepLocation, SourceArchive.SourceKind_Bicep, "metadata description = 'secondary file'");
+        var mainBicep = CreateSourceFile(fs, mainBicepFolder, Path.GetFileName(mainBicepPath), SourceArchive.SourceKind_Bicep, MainDotBicepSource);
+        var testFile = CreateSourceFile(fs, mainBicepFolder, pathRelativeToMainBicepLocation, SourceArchive.SourceKind_Bicep, SecondaryDotBicepSource);
 
         using var stream = SourceArchive.PackSources(mainBicep.FileUri, mainBicep, testFile);
 
@@ -210,9 +232,10 @@ public class SourceArchiveTests
 
         sourceArchive.GetEntrypointPath().Should().Be("my main.bicep");
 
-        var testFileMetadata = sourceArchive.GetSourceFiles().Single(f => f.Metadata.Path != "my main.bicep");
-        testFileMetadata.Metadata.Path.Should().Be(expectedArchivedUri);
-        testFileMetadata.Metadata.ArchivedPath.Should().Be(expectedArchivedPath);
+        var archivedTestFile = sourceArchive.GetSourceFiles().Single(f => f.Metadata.Path != "my main.bicep");
+        archivedTestFile.Metadata.Path.Should().Be(expectedArchivedUri);
+        archivedTestFile.Metadata.ArchivedPath.Should().Be(expectedArchivedPath);
+        archivedTestFile.Contents.Should().Be(SecondaryDotBicepSource);
     }
 
     //[TestMethod] asdfg

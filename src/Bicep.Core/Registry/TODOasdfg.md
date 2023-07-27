@@ -35,19 +35,101 @@
         Uri FileUri { get; }
         string GetOriginalSource();
     }
-
+* show only entrypoint bicep file for now
 * compilationWriter.ToStream(compilation, compiledArmTemplateStream); //asdfgasdfg this is what is used to write main arm template (from bicep)
 * PublishCommandTests
 * nested modules
 * local modules
 
-# WHEN REMOVING EXPERIMENTAL asdfg
+# BEFORE REMOVING EXPERIMENTAL FLAG asdfg
+  "sourceFiles": [
+    {
+      "path": "../../../../../.bicep/ts/e5ef2b13-6478-4887-ad57-1aa6b9475040/sawbicep/storagespec/2.0a/main.json",
+      "archivedPath": "../../../../../.bicep/ts/e5ef2b13-6478-4887-ad57-1aa6b9475040/sawbicep/storagespec/2.0a/main.json",
+      "kind": "templateSpec"
+    },
+    {
+      "path": "../simpleModule/storageAccount.bicep",
+      "archivedPath": "../simpleModule/storageAccount.bicep",
+      "kind": "bicep"
+    },
+    {
+      "path": "../../../../../.bicep/br/mcr.microsoft.com/bicep$app$dapr-containerapps-environment/1.2.2$/main.json",
+      "archivedPath": "../../../../../.bicep/br/mcr.microsoft.com/bicep$app$dapr-containerapps-environment/1.2.2$/main.json",
+      "kind": "armTemplate"
+    },
+    {
+      "path": "../../../../../.bicep/br/mcr.microsoft.com/bicep$samples$hello-world/1.0.2$/main.json",
+      "archivedPath": "../../../../../.bicep/br/mcr.microsoft.com/bicep$samples$hello-world/1.0.2$/main.json",
+      "kind": "armTemplate"
+    },
+  ]
+}
+# WHEN REMOVING EXPERIMENTAL FLAG asdfg
 * Set metadataVersion to 1
 * Fail in a friendly way on metadataVersion too large
 * 
 
 
 # LATER
+* [ ] show multiple files
+          public Task<BicepRegistryCacheResponse> Handle(BicepRegistryCacheParams request, CancellationToken cancellationToken) //asdfgasdfg
+        {
+            // If any of the following paths result in an exception being thrown (and surfaced client-side to the user),
+            // it indicates a code defect client or server-side.
+            // In normal operation, the user should never see them regardless of how malformed their code is.
+
+            if (!moduleDispatcher.TryGetModuleReference(request.Target, request.TextDocument.Uri.ToUri(), out var moduleReference, out _))
+            {
+                throw new InvalidOperationException($"The client specified an invalid module reference '{request.Target}'.");
+            }
+
+            if (!moduleReference.IsExternal)
+            {
+                throw new InvalidOperationException($"The specified module reference '{request.Target}' refers to a local module which is not supported by {BicepCacheLspMethod} requests."); //asdfg?
+            }
+
+            if (this.moduleDispatcher.GetModuleRestoreStatus(moduleReference, out _) != ModuleRestoreStatus.Succeeded)
+            {
+                throw new InvalidOperationException($"The module '{moduleReference.FullyQualifiedReference}' has not yet been successfully restored.");
+            }
+
+            if (!moduleDispatcher.TryGetLocalModuleEntryPointUri(moduleReference, out var uri, out _))
+            {
+                throw new InvalidOperationException($"Unable to obtain the entry point URI for module '{moduleReference.FullyQualifiedReference}'.");
+            }
+
+            // asdfg tracing
+            if (moduleDispatcher.TryGetModuleSources(moduleReference, out var sourceArchive)) {
+                //asdfg testpoint
+                using (var sources = sourceArchive)
+                {
+                    var entrypointContents = sources.GetSourceFiles().SingleOrDefault(f => f.Metadata.Path == sourceArchive.GetEntrypointPath())
+                    var sourcesCombined = "EXPERIMENTAL FEATURE, UNDER DEVELOPMENT!\n\nSource files that were published:\n\n"
+                        + sources.GetMetadataFileContents();
+                    sourcesCombined += "\n\n==================================================================\n";
+                    sourcesCombined +=
+                        string.Join(
+                            "\n==================================================================\n",
+                            sortedSources
+                            .Select(m => $"SOURCE FILE: {m.Metadata.Path}:\n\n{m.Contents}\n")
+                            .ToArray());
+
+                    return Task.FromResult(new BicepRegistryCacheResponse(sourcesCombined));
+                }
+            }
+
+            // No sources available asdfg
+            if (!this.fileResolver.TryRead(uri, out var contents, out var failureBuilder)) //asdfg
+            { //asdfg testpoint
+                var message = failureBuilder(DiagnosticBuilder.ForDocumentStart()).Message;
+                throw new InvalidOperationException($"Unable to read file '{uri}'. {message}");
+            }
+
+            return Task.FromResult(new BicepRegistryCacheResponse(contents));
+        }
+    }
+* [ ] What if they want to see the JSON?
 * [ ] loadContent files?  they don't currently show up in sources
 
 
