@@ -14,7 +14,7 @@ using System.Threading.Tasks;
 
 namespace Bicep.Core.Registry
 {
-    public abstract class ExternalModuleRegistry<TModuleReference, TModuleEntity> : ModuleRegistry<TModuleReference>
+    public abstract class ExternalModuleRegistry<TModuleReference, TModuleEntity> : ModuleRegistry<TModuleReference> //asdfg rename?
         where TModuleReference : ModuleReference
     {
         // if we're unable to acquire a lock on the module directory in the cache, we will retry until this timeout is reached

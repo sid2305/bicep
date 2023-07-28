@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+using Bicep.Core.Debuggable;
 using Bicep.Core.Registry.Oci;
 using Bicep.Core.UnitTests.Registry;
 using FluentAssertions;
@@ -37,8 +38,7 @@ namespace Bicep.Core.UnitTests.Assertions
 
                 this.Subject.Manifests.Should().ContainKey(manifestDigest, $"tag '{tag}' resolves to digest '{manifestDigest}' that should exist");
 
-                var manifestBytes = this.Subject.Manifests[manifestDigest];
-                using var manifestStream = MockRegistryBlobClient.WriteStream(manifestBytes);
+                using var manifestStream = this.Subject.Manifests[manifestDigest];
                 var manifest = OciSerialization.Deserialize<OciManifest>(manifestStream);
                 manifest.Should().NotBeNull();
                 manifest.ArtifactType.Should().Be("application/vnd.ms.bicep.module.artifact", "artifact type should be correct");
@@ -58,10 +58,10 @@ namespace Bicep.Core.UnitTests.Assertions
                 layer.MediaType.Should().Be("application/vnd.ms.bicep.module.layer.v1+json", "layer media type should be correct");
                 this.Subject.Blobs.Should().ContainKey(layer.Digest);
 
-                var layerBytes = this.Subject.Blobs[layer.Digest];
+                var layerBytes = this.Subject.Blobs[layer.Digest].ToArray();
                 ((long)layerBytes.Length).Should().Be(layer.Size);
 
-                var actualMainJsonStream = MockRegistryBlobClient.WriteStream(layerBytes).FromJsonStream<JToken>(); //asdfg using
+                var actualMainJsonStream = new TextMemoryStream(layerBytes).FromJsonStream<JToken>(); //asdfg using
                 expectedMainJsonContent.Position = 0;
                 var expectedMainJsonStream = expectedMainJsonContent.FromJsonStream<JToken>();
                 expectedMainJsonStream.Should().NotBeNull();
@@ -89,8 +89,7 @@ namespace Bicep.Core.UnitTests.Assertions
 
                 this.Subject.Manifests.Should().ContainKey(manifestDigest, $"tag '{tag}' resolves to digest '{manifestDigest}' that should exist");
 
-                var manifestBytes = this.Subject.Manifests[manifestDigest];
-                using var manifestStream = MockRegistryBlobClient.WriteStream(manifestBytes);
+                var manifestStream = this.Subject.Manifests[manifestDigest];
                 var manifest = OciSerialization.Deserialize<OciManifest>(manifestStream);
                 manifest.Should().NotBeNull();
                 manifest.ArtifactType.Should().Be("application/vnd.ms.bicep.module.artifact", "artifact type should be correct");

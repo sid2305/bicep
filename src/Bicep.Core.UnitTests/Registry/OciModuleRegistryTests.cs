@@ -16,7 +16,7 @@ using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using OmniSharp.Extensions.LanguageServer.Protocol;
-using MemoryStream = Bicep.Core.Debuggable.TextMemoryStream;
+using Bicep.Core.Debuggable;
 
 namespace Bicep.Core.UnitTests.Registry
 {
@@ -576,8 +576,8 @@ namespace Bicep.Core.UnitTests.Registry
             //    tag: "v1",
             //    containerRegistryClientFactory: clientFactory.Object);
 
-            using var templateStream = CreateStream(jsonContents);
-            using var sourcesStream = CreateStream("This is a test. This is only a test. If this were a real source archive, it would have been binary.");
+            using var templateStream = new TextMemoryStream(jsonContents);
+            using var sourcesStream = new TextMemoryStream("This is a test. This is only a test. If this were a real source archive, it would have been binary.");
 
             var moduleReference = new OciArtifactModuleReference(registry, repository, tag, digest,new Uri( "file://fakebicepfile.bicep", UriKind.Absolute));
             var ociModuleRegistry = CreateOciModuleRegistry(new Uri("file:///caller.bicep", UriKind.Absolute), null, clientFactory.Object);
@@ -590,14 +590,6 @@ namespace Bicep.Core.UnitTests.Registry
         #endregion
 
         #region Helpers
-
-        private Stream CreateStream(string contents)
-        {
-            var stream = new MemoryStream();
-            using var writer = new StreamWriter(stream, System.Text.Encoding.UTF8, leaveOpen: true);
-            writer.Write(contents);
-            return stream;
-        }
 
         private OciModuleRegistry CreateOciModuleRegistry(
             Uri parentModuleUri,

@@ -143,3 +143,6 @@ BicepDefinitionHandler
   * ForceModuleRestoreWithStuckFileLockShouldFailAfterTimeout
   * **30s**: ModuleRestoreWithStuckFileLockShouldFailAfterTimeout
 * ITestDataSource?
+* AzureContainerRegistryManager -> OciContainerRegistryManager (and move to OCI folder, and maybe split)
+* ContainerRegistryClientFactory -> OciRegistryClientFactory
+  * ditto IContainerRegistryClientFactory

@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 using Bicep.Core.Configuration;
+using Bicep.Core.Debuggable;
 using Bicep.Core.Diagnostics;
 using Bicep.Core.Extensions;
 using Bicep.Core.FileSystem;
@@ -34,7 +35,6 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using static Bicep.Core.UnitTests.Diagnostics.LinterRuleTests.UseRecentApiVersionRuleTests.GetAcceptableApiVersionsInvariantsTests;
-using MemoryStream = Bicep.Core.Debuggable.TextMemoryStream;
 
 namespace Bicep.LangServer.UnitTests.Completions
 {
@@ -390,7 +390,7 @@ namespace Bicep.LangServer.UnitTests.Completions
         public void GetModules_ForwardsCompatibleWithOriginalVersion()
         {
             // Earlier Bicep versions should not be confused by new metadata formats
-            var metadataStream = new MemoryStream(UTF8Encoding.UTF8.GetBytes(ModuleIndex));
+            var metadataStream = new TextMemoryStream(ModuleIndex);
             ModuleMetadata_Original[] metadata = JsonSerializer.Deserialize<ModuleMetadata_Original[]>(metadataStream)!.ToArray();
 
             metadata.Length.Should().BeGreaterThanOrEqualTo(29);

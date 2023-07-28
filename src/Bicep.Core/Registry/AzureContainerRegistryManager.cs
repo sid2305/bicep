@@ -16,13 +16,13 @@ using Azure.Containers.ContainerRegistry;
 using Azure.Core;
 using Azure.Identity;
 using Bicep.Core.Configuration;
+using Bicep.Core.Debuggable;
 using Bicep.Core.Extensions;
 using Bicep.Core.Modules;
 using Bicep.Core.Registry.Oci;
 using Microsoft.WindowsAzure.ResourceStack.Common.Extensions;
 using OciDescriptor = Bicep.Core.Registry.Oci.OciDescriptor;
 using OciManifest = Bicep.Core.Registry.Oci.OciManifest;
-using MemoryStream = Bicep.Core.Debuggable.TextMemoryStream;
 
 namespace Bicep.Core.Registry
 {
@@ -42,14 +42,14 @@ namespace Bicep.Core.Registry
         [SuppressMessage("Trimming", "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code", Justification = "Relying on references to required properties of the generic type elsewhere in the codebase.")]
         public async Task<OciArtifactResult> PullModuleArtifactsAsync(RootConfiguration configuration, OciArtifactModuleReference moduleReference, bool includeSources = true)
         {
-            ContainerRegistryContentClient client;
+            IOciRegistryContentClient client;
             OciManifest manifest;
             Stream manifestStream;
             string mainManifestDigest;
 
-            async Task<(ContainerRegistryContentClient, OciManifest, Stream, string)> DownloadMainManifestInternalAsync(bool anonymousAccess)
+            async Task<(IOciRegistryContentClient, OciManifest, Stream, string)> DownloadMainManifestInternalAsync(bool anonymousAccess)
             {
-                var client = this.CreateBlobClient(configuration, moduleReference, anonymousAccess);
+                var client = this.CreateContentClient(configuration, moduleReference, anonymousAccess);
                 var (manifest, manifestStream, manifestDigest) = await DownloadMainManifestAsync(moduleReference, client);
                 return (client, manifest, manifestStream, manifestDigest);
             }
@@ -86,61 +86,10 @@ namespace Bicep.Core.Registry
             return new OciArtifactResult(mainManifestDigest, manifest, manifestStream, moduleStream, sourcesStream);
         }
 
-        // Retrieves a list of manifests that refer to the specified manifest (and thus are attached to it)
-        private static async Task<IEnumerable<(string artifactType, string digest)>> GetReferrersAsync(ContainerRegistryContentClient client, OciArtifactModuleReference moduleReference, string mainManifestDigest)
+        private async Task<Stream?> GetBicepSourcesAsync(IOciRegistryContentClient client, OciArtifactModuleReference moduleReference, string mainManifestDigest)
         {
-            IEnumerable<(string artifactType, string digest)>? referrers = null;
+            var referrers = await client.GetReferrersAsync(mainManifestDigest);
 
-            if (client.Pipeline is { } pipeline) // asdfg this guards against Bicep.Core.UnitTests.Registry.MockRegistryBlobClient which doesn't implement Pipeline.  Should it be implemented in tests?
-            {
-                var request = client.Pipeline.CreateRequest();
-                request.Method = RequestMethod.Get;
-                request.Uri.Reset(GetRegistryUri(moduleReference));
-                request.Uri.AppendPath("/v2/", false);
-                request.Uri.AppendPath(moduleReference.Repository, true);
-                request.Uri.AppendPath("/referrers/", false);
-                request.Uri.AppendPath(mainManifestDigest);
-
-                var response = await client.Pipeline.SendRequestAsync(request, CancellationToken.None);
-                if (response.IsError)
-                {
-                    throw new Exception($"Unable to retrieve source manifests. Referrers API failed with status code {response.Status}");
-                }
-
-                //asdfg test with responses that contain additional data
-
-#pragma warning disable IL2026 // Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code
-                var referrersResponse = JsonSerializer.Deserialize<JsonElement>(response.Content.ToString());
-#pragma warning restore IL2026 // Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code
-
-                /* Example JSON result:
-                    {
-                      "schemaVersion": 2,
-                      "mediaType": "application/vnd.oci.image.index.v1+json",
-                      "manifests": [
-                        {
-                          "mediaType": "application/vnd.oci.image.manifest.v1+json",
-                          "digest": "sha256:210a9f9e8134fc77940ea17f971adcf8752e36b513eb7982223caa1120774284",
-                          "size": 811,
-                          "artifactType": "application/vnd.ms.bicep.module.sources"
-                        },
-                        ...
-                */
-
-                referrers = referrersResponse.TryGetPropertyByPath("manifests")
-                    ?.EnumerateArray()
-                    .Select<JsonElement, (string? artifactType, string? digest)>(
-                        m => (m.GetProperty("artifactType").GetString(), m.GetProperty("digest").GetString()))
-                    .Where(m => m.artifactType is not null && m.digest is not null)
-                    .Select(m => (m.artifactType!, m.digest!));
-            }
-
-            return referrers ?? Enumerable.Empty<(string, string)>();
-        }
-
-        private async Task<Stream?> GetBicepSourcesAsync(ContainerRegistryContentClient client, OciArtifactModuleReference moduleReference, string mainManifestDigest)
-        {
-            var referrers = await GetReferrersAsync(client, moduleReference, mainManifestDigest);
             var sourceDigests = referrers.Where(r => r.artifactType == BicepMediaTypes.BicepModuleSourcesArtifactType).Select(r => r.digest);
             if (sourceDigests?.Count() > 1)
             {
@@ -172,7 +121,7 @@ namespace Bicep.Core.Registry
             var algorithmIdentifier = DescriptorFactory.AlgorithmIdentifierSha256;
 
             // push is not supported anonymously
-            var blobClient = this.CreateBlobClient(configuration, moduleReference, anonymousAccess: false);
+            var blobClient = this.CreateContentClient(configuration, moduleReference, anonymousAccess: false);
 
             config.ResetStream();
             var configDescriptor = DescriptorFactory.CreateDescriptor(algorithmIdentifier, config);
@@ -209,7 +158,7 @@ namespace Bicep.Core.Registry
 
             var manifest = new OciManifest(2, null, artifactType, configDescriptor, layerDescriptors, null, annotations);
 
-            using var manifestStream = new MemoryStream();
+            using var manifestStream = new TextMemoryStream();
             OciSerialization.Serialize(manifestStream, manifest);
 
             manifestStream.Position = 0;
@@ -228,7 +177,7 @@ namespace Bicep.Core.Registry
                 // asdfg remove current attachments (only if force??)
 
                 // Azure Container Registries won't recognize this as a valid attachment unless this is valid JSON, so write out an empty object
-                using var innerConfigStream = new MemoryStream(new byte[] { (byte)'{', (byte)'}' });
+                using var innerConfigStream = new TextMemoryStream("{}");
                 var configasdfg = new StreamDescriptor(innerConfigStream, BicepMediaTypes.BicepModuleSourcesArtifactType);//, new Dictionary<string, string> { { "asdfg1", "asdfg value" } });
                 var configasdfgDescriptor = DescriptorFactory.CreateDescriptor(algorithmIdentifier, configasdfg);
 
@@ -252,7 +201,7 @@ namespace Bicep.Core.Registry
                     new Dictionary<string, string> { { LanguageConstants.OciOpenContainerImageCreatedAnnotation, DateTime.UtcNow.ToRFC3339() } }
                     );
 
-                using var manifestasdfgStream = new MemoryStream();
+                using var manifestasdfgStream = new TextMemoryStream();
                 OciSerialization.Serialize(manifestasdfgStream, manifestasdfg);
 
                 manifestasdfgStream.Position = 0;
@@ -263,11 +212,11 @@ namespace Bicep.Core.Registry
 
         private static Uri GetRegistryUri(OciArtifactModuleReference moduleReference) => new($"https://{moduleReference.Registry}");
 
-        private ContainerRegistryContentClient CreateBlobClient(RootConfiguration configuration, OciArtifactModuleReference moduleReference, bool anonymousAccess) => anonymousAccess
+        private IOciRegistryContentClient CreateContentClient(RootConfiguration configuration, OciArtifactModuleReference moduleReference, bool anonymousAccess) => anonymousAccess
             ? this.clientFactory.CreateAnonymousBlobClient(configuration, GetRegistryUri(moduleReference), moduleReference.Repository)
             : this.clientFactory.CreateAuthenticatedBlobClient(configuration, GetRegistryUri(moduleReference), moduleReference.Repository);
 
-        private static async Task<(OciManifest, Stream, string)> DownloadMainManifestAsync(OciArtifactModuleReference moduleReference, ContainerRegistryContentClient client)
+        private static async Task<(OciManifest, Stream, string)> DownloadMainManifestAsync(OciArtifactModuleReference moduleReference, IOciRegistryContentClient client)
         {
             Response<GetManifestResult> manifestResponse;
             try
@@ -315,7 +264,7 @@ namespace Bicep.Core.Registry
             }
         }
 
-        private static async Task<Stream> GetModuleArmTemplateFromManifest(ContainerRegistryContentClient client, OciManifest manifest)
+        private static async Task<Stream> GetModuleArmTemplateFromManifest(IOciRegistryContentClient client, OciManifest manifest)
         {
             // Bicep versions before 0.14 used to publish modules without the artifactType field set in the OCI manifest,
             // so we must allow null here
@@ -335,7 +284,7 @@ namespace Bicep.Core.Registry
             return await ProcessMainManifestLayer(client, layer);
         }
 
-        private static async Task<Stream> ProcessMainManifestLayer(ContainerRegistryContentClient client, OciDescriptor layer)
+        private static async Task<Stream> ProcessMainManifestLayer(IOciRegistryContentClient client, OciDescriptor layer)
         {
             if (!string.Equals(layer.MediaType, BicepMediaTypes.BicepModuleLayerV1Json, MediaTypeComparison))
             {
@@ -345,7 +294,7 @@ namespace Bicep.Core.Registry
             return await DownloadBlobAsync(client, layer.Digest, layer.Size);
         }
 
-        private static async Task<Stream> DownloadBlobAsync(ContainerRegistryContentClient client, string digest, long expectedSize)
+        private static async Task<Stream> DownloadBlobAsync(IOciRegistryContentClient client, string digest, long expectedSize)
         {
             Response<DownloadRegistryBlobResult> blobResponse;
             try

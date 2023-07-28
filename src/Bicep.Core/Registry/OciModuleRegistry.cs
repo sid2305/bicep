@@ -11,6 +11,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Azure;
 using Bicep.Core.Configuration;
+using Bicep.Core.Debuggable;
 using Bicep.Core.Diagnostics;
 using Bicep.Core.Features;
 using Bicep.Core.FileSystem;
@@ -19,7 +20,6 @@ using Bicep.Core.Registry.Oci;
 using Bicep.Core.Semantics;
 using Bicep.Core.Tracing;
 using Newtonsoft.Json;
-using MemoryStream = Bicep.Core.Debuggable.TextMemoryStream;
 
 namespace Bicep.Core.Registry
 {
@@ -262,7 +262,7 @@ namespace Bicep.Core.Registry
 
             // write metadata
             var metadata = new ModuleMetadata(result.ManifestDigest);
-            using var metadataStream = new MemoryStream();
+            using var metadataStream = new TextMemoryStream();
             OciSerialization.Serialize(metadataStream, metadata);
             metadataStream.Position = 0;
             this.FileResolver.Write(this.GetModuleFileUri(reference, ModuleFileType.Metadata), metadataStream);

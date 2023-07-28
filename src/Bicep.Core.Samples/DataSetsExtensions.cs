@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using Azure.Containers.ContainerRegistry;
 using Azure.Identity;
 using Bicep.Core.Configuration;
+using Bicep.Core.Debuggable;
 using Bicep.Core.Features;
 using Bicep.Core.FileSystem;
 using Bicep.Core.Modules;
@@ -28,7 +29,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using Newtonsoft.Json;
-using MemoryStream = Bicep.Core.Debuggable.TextMemoryStream;
 
 namespace Bicep.Core.Samples
 {
@@ -185,7 +185,7 @@ namespace Bicep.Core.Samples
                 throw new InvalidOperationException($"Module {moduleName} failed to procuce a template.");
             }
 
-            var stream = new MemoryStream();
+            var stream = new TextMemoryStream();
             using (var streamWriter = new StreamWriter(stream, leaveOpen: true))
             using (var writer = new JsonTextWriter(streamWriter)) //asdfgasdfg
             {

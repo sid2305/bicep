@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Bicep.Core.Debuggable;
 using Bicep.Core.Diagnostics;
 using Bicep.Core.Emit;
 using Bicep.Core.FileSystem;
@@ -16,7 +17,6 @@ using Bicep.Core.UnitTests.FileSystem;
 using Bicep.Core.Workspaces;
 using FluentAssertions;
 using Newtonsoft.Json.Linq;
-using MemoryStream = Bicep.Core.Debuggable.TextMemoryStream;
 
 namespace Bicep.Core.UnitTests.Utils
 {
@@ -120,7 +120,7 @@ namespace Bicep.Core.UnitTests.Utils
             JToken? template = null;
             if (!semanticModel.HasErrors())
             {
-                using var stream = new MemoryStream();
+                using var stream = new TextMemoryStream();
                 var emitResult = emitter.Emit(stream);
 
                 if (emitResult.Status != EmitStatus.Failed)
@@ -145,7 +145,7 @@ namespace Bicep.Core.UnitTests.Utils
             JToken? parameters = null;
             if (!semanticModel.HasErrors())
             {
-                using var stream = new MemoryStream();
+                using var stream = new TextMemoryStream();
                 var emitResult = emitter.Emit(stream);
 
                 if (emitResult.Status != EmitStatus.Failed)

@@ -1,0 +1,61 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ClassDiagram MajorVersion="1" MinorVersion="1">
+  <Class Name="Bicep.Core.Registry.AzureContainerRegistryManager" Collapsed="true">
+    <Position X="4.5" Y="7.25" Width="2.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAEQgACAAUAAAACAEAACAgAAACAAAAAAoAAkAAAAA=</HashCode>
+      <FileName>Registry\AzureContainerRegistryManager.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="Bicep.Core.Registry.ExternalModuleRegistry&lt;TModuleReference, TModuleEntity&gt;" Collapsed="true">
+    <Position X="4.5" Y="3.75" Width="3.75" />
+    <TypeIdentifier>
+      <HashCode>AAAAIAAAQgAAAASABAAAAAAAAAAAAwBCAAAAABAAAAA=</HashCode>
+      <FileName>Registry\ExternalModuleRegistry.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="Bicep.Core.Registry.LocalModuleRegistry" Collapsed="true">
+    <Position X="0.75" Y="3.75" Width="2.5" />
+    <TypeIdentifier>
+      <HashCode>EIAACAAAJAAgAgAAAAAAAgAEAAIAAAAMAAAAAAgCAQA=</HashCode>
+      <FileName>Registry\LocalModuleRegistry.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="Bicep.Core.Registry.ModuleRegistry&lt;T&gt;" Collapsed="true">
+    <Position X="3.5" Y="2.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AIAACAAAJAAhAgAAAAABAAAEAAAAAAAMAAAAAAgCAQA=</HashCode>
+      <FileName>Registry\ModuleRegistry.cs</FileName>
+    </TypeIdentifier>
+    <Lollipop Position="0.2" />
+  </Class>
+  <Class Name="Bicep.Core.Registry.OciModuleRegistry" Collapsed="true">
+    <Position X="6.75" Y="5.5" Width="4" />
+    <TypeIdentifier>
+      <HashCode>EIAACAAAJgBkAwSAhAAAAAAEIACAABAMAAAABAgCAQA=</HashCode>
+      <FileName>Registry\OciModuleRegistry.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="Bicep.Core.Registry.TemplateSpecModuleRegistry" Collapsed="true">
+    <Position X="1.5" Y="5.5" Width="4.5" />
+    <TypeIdentifier>
+      <HashCode>EIAACgAAJgAgAgSAAAAACAAEAACAAAAOAACAAAgCAQA=</HashCode>
+      <FileName>Registry\TemplateSpecModuleRegistry.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Interface Name="Bicep.Core.Registry.IContainerRegistryClientFactory">
+    <Position X="7.75" Y="8" Width="2.5" />
+    <TypeIdentifier>
+      <HashCode>AIAAAAAAAAAAAAAAAAAAAAAAAgAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>Registry\IContainerRegistryClientFactory.cs</FileName>
+    </TypeIdentifier>
+  </Interface>
+  <Interface Name="Bicep.Core.Registry.IModuleRegistry" Collapsed="true">
+    <Position X="3.5" Y="1.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AIAACAAAIAAhAgAAAAAAAAAEAAAAAAAMAAAAAAgCAQA=</HashCode>
+      <FileName>Registry\IModuleRegistry.cs</FileName>
+    </TypeIdentifier>
+  </Interface>
+  <Font Name="Segoe UI" Size="9" />
+</ClassDiagram>

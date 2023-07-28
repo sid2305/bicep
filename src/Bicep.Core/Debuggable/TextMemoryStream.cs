@@ -3,41 +3,48 @@
 
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Text;
 
 namespace Bicep.Core.Debuggable;
 
 /// <summary>
-/// A MemoryStream that will display its contents as text in the VS debugger
+/// A MemoryStream that can be easily converted to/from text and will display its contents as text in the VS debugger.
 /// </summary>
-[DebuggerDisplay("Pos={Position}, {GetTextContents()}")]
+[DebuggerDisplay("Pos={Position == Length - 1 ? \"at end\" : Position}, {GetString()}")]
 public class TextMemoryStream : MemoryStream
 {
+    #region MemoryStream constructors
+
     public TextMemoryStream() { }
 
-    public TextMemoryStream(byte[] buffer)
-        : base(buffer) { }
+    public TextMemoryStream(byte[] buffer) : base(buffer) { }
 
-    public TextMemoryStream(int capacity)
-    : base(capacity) { }
+    public TextMemoryStream(int capacity) : base(capacity) { }
 
-    private string GetTextContents()
+    public TextMemoryStream(byte[] buffer, bool writable) : base(buffer, writable) { }
+
+    public TextMemoryStream(byte[] buffer, int index, int count) : base(buffer, index, count) { }
+
+    public TextMemoryStream(byte[] buffer, int index, int count, bool writable) : base(buffer, index, count, writable) { }
+
+    public TextMemoryStream(byte[] buffer, int index, int count, bool writable, bool publiclyVisible) : base(buffer, index, count, writable, publiclyVisible) { }
+
+    #endregion MemoryStream constructors
+    public TextMemoryStream(IEnumerable<byte> bytes)
+        : base(bytes.ToArray())
     {
-        var previousPosition = this.Position;
-        this.Position = 0;
+    }
 
-        try
-        {
-            using (StreamReader reader = new StreamReader(this, leaveOpen: true))
-            {
-                return reader.ReadToEnd();
-            }
-        }
-        finally
-        {
-            this.Position = previousPosition;
-        }
+    public TextMemoryStream(string content)
+    : base(Encoding.UTF8.GetBytes(content))
+    { }
+
+    public string GetString()
+    {
+        return Encoding.UTF8.GetString(this.GetBuffer());
     }
 }

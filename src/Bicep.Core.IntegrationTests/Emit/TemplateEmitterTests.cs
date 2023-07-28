@@ -29,7 +29,7 @@ using Bicep.Core.UnitTests.Baselines;
 using System;
 using System.Reflection;
 using System.Text.RegularExpressions;
-using MemoryStream = Bicep.Core.Debuggable.TextMemoryStream;
+using Bicep.Core.Debuggable;
 
 namespace Bicep.Core.IntegrationTests.Emit
 {
@@ -128,7 +128,7 @@ namespace Bicep.Core.IntegrationTests.Emit
 
             var compilation = await compiler.CreateCompilation(bicepUri);
             var emitter = new TemplateEmitter(compilation.GetEntrypointSemanticModel());
-            using var memoryStream = new MemoryStream();
+            using var memoryStream = new TextMemoryStream();
             var emitResult = emitter.Emit(memoryStream);
 
             emitResult.Status.Should().Be(EmitStatus.Succeeded);
@@ -148,14 +148,14 @@ namespace Bicep.Core.IntegrationTests.Emit
             var features = new FeatureProviderOverrides(TestContext, RegistryEnabled: dataSet.HasExternalModules, SourceMappingEnabled: true);
             var (compilation, outputDirectory, _) = await dataSet.SetupPrerequisitesAndCreateCompilation(TestContext, features);
             var emitter = new TemplateEmitter(compilation.GetEntrypointSemanticModel());
-            using var memoryStream = new MemoryStream();
+            using var memoryStream = new TextMemoryStream();
             var emitResult = emitter.Emit(memoryStream);
 
             emitResult.Status.Should().Be(EmitStatus.Succeeded);
             emitResult.SourceMap.Should().NotBeNull();
             var sourceMap = emitResult.SourceMap!;
 
-            using var streamReader = new StreamReader(new MemoryStream(memoryStream.ToArray()));
+            using var streamReader = new StreamReader(new TextMemoryStream(memoryStream.ToArray()));
             var jsonLines = (await streamReader.ReadToEndAsync()).Split(System.Environment.NewLine);
 
             var sourceTextWithSourceMap = OutputHelper.AddSourceMapToSourceText(
@@ -196,14 +196,14 @@ namespace Bicep.Core.IntegrationTests.Emit
         {
             var sourceFileGrouping = await GetSourceFileGrouping(dataSet);
 
-            var memoryStream = new MemoryStream();
+            var memoryStream = new TextMemoryStream();
             var result = this.EmitTemplate(sourceFileGrouping, new(), memoryStream);
             result.Diagnostics.Should().NotHaveErrors();
             result.Status.Should().Be(EmitStatus.Succeeded);
 
             // normalizing the formatting in case there are differences in indentation
             // this way the diff between actual and expected will be clean
-            var actual = JToken.ReadFrom(new JsonTextReader(new StreamReader(new MemoryStream(memoryStream.ToArray()))));
+            var actual = JToken.ReadFrom(new JsonTextReader(new StreamReader(new TextMemoryStream(memoryStream.ToArray()))));
             var compiledFilePath = FileHelper.SaveResultFile(this.TestContext, Path.Combine(dataSet.Name, DataSet.TestFileMainCompiled), actual.ToString(Formatting.Indented));
 
             actual.Should().EqualWithJsonDiffOutput(

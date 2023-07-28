@@ -29,6 +29,8 @@ using System.Text;
 using Bicep.Core.Emit;
 using Azure.Identity;
 
+//asdfg publish vs not publish sources for all
+
 namespace Bicep.Cli.IntegrationTests
 {
     [TestClass]
@@ -93,7 +95,7 @@ namespace Bicep.Cli.IntegrationTests
             var bicepFilePath = Path.Combine(outputDirectory, DataSet.TestFileMain);
 
             // create client that mocks missing az or PS login
-            var clientWithCredentialUnavailable = StrictMock.Of<ContainerRegistryContentClient>();
+            var clientWithCredentialUnavailable = StrictMock.Of<IOciRegistryContentClient>();
             clientWithCredentialUnavailable
                 .Setup(m => m.GetManifestAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new CredentialUnavailableException("Mock credential unavailable exception"));
@@ -200,7 +202,6 @@ module empty 'br:{registry}/{repository}@{digest}' = {{
             }
         }
 
-        [TestMethod]
         public async Task Restore_With_Force_Should_Overwrite_Existing_Cache()
         {
             var registry = "example.com";
@@ -220,7 +221,7 @@ module empty 'br:{registry}/{repository}@{digest}' = {{
             Directory.CreateDirectory(tempDirectory);
 
             var publishedBicepFilePath = Path.Combine(tempDirectory, "module.bicep");
-            File.WriteAllText(publishedBicepFilePath,@"
+            File.WriteAllText(publishedBicepFilePath, @"
 param p1 string
 output o1 string = p1");
 
@@ -232,9 +233,9 @@ output o1 string = p1");
                 publishError.Should().BeEmpty();
             }
 
-            client.Blobs.Should().HaveCount(2);
-            client.Manifests.Should().HaveCount(1);
-            client.ManifestTags.Should().HaveCount(1);
+            client.Blobs.Should().HaveCount(4);//asdfg
+            client.Manifests.Should().HaveCount(2);//asdfg
+            client.ManifestTags.Should().HaveCount(1);//asdfg
 
             string digest = client.Manifests.Single().Key;
 
@@ -319,9 +320,10 @@ output o1 string = '${p1}${p2}'");
             }
         }
 
-        [TestMethod]
         public async Task Restore_ByDigest_ShouldSucceed()
         {
+            bool publishSources = true; //asdfg
+
             var registry = "example.com";
             var registryUri = new Uri("https://" + registry);
             var repository = "hello/there";
@@ -349,17 +351,28 @@ output o1 string = '${p1}${p2}'");
                 publishError.Should().BeEmpty();
             }
 
-            client.Blobs.Should().HaveCount(2);
-            client.Manifests.Should().HaveCount(1);
-            client.ManifestTags.Should().HaveCount(1);
+            if (publishSources)
+            {
+                client.Blobs.Should().HaveCount(4); // 2 for main manifest/config, 2 for sources manifest/config //asdfg
+                client.Manifests.Should().HaveCount(2); // main manifest, sources manifest
+                client.ManifestTags.Should().HaveCount(1);
+            }
+            else
+            {
+                client.Blobs.Should().HaveCount(2); // 2 for main manifest/config, 2 for sources manifest/config //asdfg
+                client.Manifests.Should().HaveCount(1); // main manifest, sources manifest
+                client.ManifestTags.Should().HaveCount(1);
+            }
 
-            string digest = client.Manifests.Single().Key;
+            string moduleDigest = client.GetAllManifestsAsObjects().Where(kvp => kvp.Value.ArtifactType == BicepMediaTypes.BicepModuleArtifactType).Select(kvp => kvp.Key).Single();
 
             var bicep = $@"
-module empty 'br:{registry}/{repository}@{digest}' = {{
+module empty 'br:{registry}/{repository}@{moduleDigest}' = {{
   name: 'empty'
 }}
 ";
+
+            //asdfg test sources
 
             var restoreBicepFilePath = Path.Combine(tempDirectory, "restored.bicep");
             File.WriteAllText(restoreBicepFilePath, bicep);
@@ -407,7 +420,7 @@ module empty 'br:{registry}/{repository}@{digest}' = {{
             var compiledFilePath = Path.Combine(outputDirectory, "main.bicep");
             File.WriteAllText(compiledFilePath, @"module foo 'br:fake/fake:v1'");
 
-            var client = StrictMock.Of<ContainerRegistryContentClient>();
+            var client = StrictMock.Of<IOciRegistryContentClient>();
             client
                 .Setup(m => m.GetManifestAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new AggregateException(new RequestFailedException("Mock registry request failure 1."), new RequestFailedException("Mock registry request failure 2.")));
@@ -439,7 +452,7 @@ module empty 'br:{registry}/{repository}@{digest}' = {{
             var compiledFilePath = Path.Combine(outputDirectory, "main.bicep");
             File.WriteAllText(compiledFilePath, @"module foo 'br:fake/fake:v1'");
 
-            var client = StrictMock.Of<ContainerRegistryContentClient>();
+            var client = StrictMock.Of<IOciRegistryContentClient>();
             client
                 .Setup(m => m.GetManifestAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new RequestFailedException("Mock registry request failure."));

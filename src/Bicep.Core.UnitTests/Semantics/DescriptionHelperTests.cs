@@ -4,12 +4,12 @@
 using System.IO;
 using System.Linq;
 using System.Text;
+using Bicep.Core.Debuggable;
 using Bicep.Core.Semantics;
 using Bicep.Core.TypeSystem;
 using Bicep.Core.Workspaces;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using MemoryStream = Bicep.Core.Debuggable.TextMemoryStream;
 
 namespace Bicep.Core.UnitTests.Semantics;
 
@@ -51,7 +51,7 @@ public class DescriptionHelperTests
     )]
     public void TryGetFromArmTemplate(string json, string? expectedDescription)
     {
-        using var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+        using var stream = new TextMemoryStream(json);
         var description = DescriptionHelper.TryGetFromArmTemplate(stream);
 
         description.Should().Be(expectedDescription);
@@ -185,7 +185,7 @@ public class DescriptionHelperTests
     )]
     public void TryGetFromTemplateSpec(string json, string? expectedDescription)
     {
-        using var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+        using var stream = new TextMemoryStream(json);
         var description = DescriptionHelper.TryGetFromTemplateSpec(stream);
 
         description.Should().Be(expectedDescription);

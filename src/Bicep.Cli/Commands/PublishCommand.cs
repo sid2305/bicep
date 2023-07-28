@@ -6,6 +6,7 @@ using Bicep.Cli.Helpers;
 using Bicep.Cli.Logging;
 using Bicep.Cli.Services;
 using Bicep.Core.Configuration;
+using Bicep.Core.Debuggable;
 using Bicep.Core.Diagnostics;
 using Bicep.Core.Exceptions;
 using Bicep.Core.FileSystem;
@@ -18,7 +19,6 @@ using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
 using System.Threading.Tasks;
-using MemoryStream = Bicep.Core.Debuggable.TextMemoryStream;
 
 namespace Bicep.Cli.Commands
 {
@@ -72,7 +72,7 @@ namespace Bicep.Cli.Commands
                 return 1;
             }
 
-            var compiledArmTemplateStream = new MemoryStream();
+            var compiledArmTemplateStream = new TextMemoryStream();
             compilationWriter.ToStream(compilation, compiledArmTemplateStream);
             compiledArmTemplateStream.Position = 0;
 

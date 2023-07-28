@@ -20,7 +20,7 @@ using OmniSharp.Extensions.LanguageServer.Protocol.Server;
 using Bicep.Core.Modules;
 using Bicep.Core;
 using Bicep.Core.Registry;
-using MemoryStream = Bicep.Core.Debuggable.TextMemoryStream;
+using Bicep.Core.Debuggable;
 
 namespace Bicep.LanguageServer.Providers
 {
@@ -51,7 +51,7 @@ namespace Bicep.LanguageServer.Providers
         }
 
         public PublicRegistryModuleMetadataProvider(string testData, bool initializeCache = false)
-            : this(() => Task.FromResult<Stream>(new MemoryStream(UTF8Encoding.UTF8.GetBytes(testData))), initializeCache)
+            : this(() => Task.FromResult<Stream>(new TextMemoryStream(testData)), initializeCache)
         {
         }
 

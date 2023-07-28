@@ -203,7 +203,7 @@ public class SourceArchiveTests
     //    DisplayName = "HandlesPathsCorrectly: separate drives")]
     [DataRow(
         "/my root/my project/my other bicep.bicep",
-        "d:/folder/my other bicep.bicep", //asdfg??
+        "my other bicep.bicep",
         DisplayName = "HandlesPathsCorrectly: separate drives")]
     //asdfg ..
     //asdfg paths with query strings
