@@ -72,6 +72,13 @@ namespace Bicep.Core.UnitTests.Assertions
             return new(this);
         }
 
+        //asdfg
+        //private GetReferrers(string mainModuleDigest) {
+        //    var referrers = this.Subject.Manifests
+        //        .Where(m => m.)
+        //        .Should().ContainKey(manifestDigest, $"tag '{tag}' resolves to digest '{manifestDigest}' that should exist");
+        //}
+
         public AndConstraint<MockRegistryAssertions> HaveAttachedSources(string tag, Stream expectedSources)
         {
             using (new AssertionScope())
