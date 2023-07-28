@@ -527,7 +527,12 @@ namespace Bicep.Core.UnitTests.Registry
         [TestMethod]
         public async Task asdfg()
         {
-            string bicepContents = "output myOutput string = 'hello!'";
+            string registry = "myregistry.azurecr.io";
+            string repository = "bicep/myrepo";
+            string tag = "v1";
+            string? digest = null;
+
+            //asdfg string bicepContents = "output myOutput string = 'hello!'";
             string jsonContents = @"{
   ""$schema"": ""https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#"",
   ""contentVersion"": ""1.0.0.0"",
@@ -546,7 +551,7 @@ namespace Bicep.Core.UnitTests.Registry
     }
   }
 }";
-            string manifestContents = "{}"; //asdfg
+            //asdfg string manifestContents = "fake manifest"; //asdfg
 
             IContainerRegistryClientFactory ClientFactory = StrictMock.Of<IContainerRegistryClientFactory>().Object;
 
@@ -562,16 +567,21 @@ namespace Bicep.Core.UnitTests.Registry
                 .Setup(m => m.CreateAuthenticatedBlobClient(It.IsAny<RootConfiguration>(), It.IsAny<Uri>(), It.IsAny<string>()))
                 .Returns(blobClient);
 
-            (OciModuleRegistry ociModuleRegistry, OciArtifactModuleReference moduleReference) = GetOciModuleRegistryAndOciArtifactModuleReference(
-                bicepContents,
-                manifestContents,
-                "testregistry.azurecr.io",
-                "bicep/modules/testrepo",
-                tag: "v1",
-                containerRegistryClientFactory: clientFactory.Object);
+            //asdfg
+            //(OciModuleRegistry ociModuleRegistry, OciArtifactModuleReference moduleReference) = GetOciModuleRegistryAndOciArtifactModuleReference(
+            //    bicepContents,
+            //    manifestContents,
+            //    "testregistry.azurecr.io",
+            //    "bicep/modules/testrepo",
+            //    tag: "v1",
+            //    containerRegistryClientFactory: clientFactory.Object);
 
             using var templateStream = CreateStream(jsonContents);
             using var sourcesStream = CreateStream("This is a test. This is only a test. If this were a real source archive, it would have been binary.");
+
+            var moduleReference = new OciArtifactModuleReference(registry, repository, tag, digest,new Uri( "file://fakebicepfile.bicep", UriKind.Absolute));
+            var ociModuleRegistry = CreateOciModuleRegistry(new Uri("file:///caller.bicep", UriKind.Absolute), null, clientFactory.Object);
+
             await ociModuleRegistry.PublishModule(moduleReference, templateStream, sourcesStream, "http://documentation", "description");
 
             blobClient.Should().HaveModule("v1", templateStream);
@@ -587,6 +597,19 @@ namespace Bicep.Core.UnitTests.Registry
             using var writer = new StreamWriter(stream, System.Text.Encoding.UTF8, leaveOpen: true);
             writer.Write(contents);
             return stream;
+        }
+
+        private OciModuleRegistry CreateOciModuleRegistry(
+            Uri parentModuleUri,
+            string? cacheRootDirectory,
+            IContainerRegistryClientFactory? containerRegistryClientFactory = null)
+        {
+            return new OciModuleRegistry(
+                BicepTestConstants.FileResolver,
+                containerRegistryClientFactory ?? BicepTestConstants.ClientFactory,
+                GetFeatures(cacheRootDirectory is not null, cacheRootDirectory ?? string.Empty),
+                BicepTestConstants.BuiltInConfiguration,
+                parentModuleUri);
         }
 
         private (OciModuleRegistry, OciArtifactModuleReference) GetOciModuleRegistryAndOciArtifactModuleReference( //asdfg rename?
@@ -613,7 +636,10 @@ namespace Bicep.Core.UnitTests.Registry
                 digest,
                 tag);
 
-            var ociModuleRegistry = new OciModuleRegistry(BicepTestConstants.FileResolver, containerRegistryClientFactory ?? BicepTestConstants.ClientFactory, GetFeatures(cacheRootDirectory, testOutputPath), BicepTestConstants.BuiltInConfiguration, parentModuleUri);
+            var ociModuleRegistry = CreateOciModuleRegistry(
+                parentModuleUri,
+                cacheRootDirectory ? testOutputPath : null,
+                containerRegistryClientFactory);
 
             return (ociModuleRegistry, ociArtifactModuleReference);
         }

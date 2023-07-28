@@ -72,6 +72,51 @@ namespace Bicep.Core.UnitTests.Assertions
             return new(this);
         }
 
+        public AndConstraint<MockRegistryAssertions> HaveAttachedSources(string tag, Stream expectedSources)
+        {
+            using (new AssertionScope())
+            {
+                this.Subject.ManifestTags.Should().ContainKey(tag, $"tag '{tag}' should exist");
+
+                string manifestDigest = this.Subject.ManifestTags[tag];
+
+                this.Subject.Manifests.Should().ContainKey(manifestDigest, $"tag '{tag}' resolves to digest '{manifestDigest}' that should exist");
+
+                var manifestBytes = this.Subject.Manifests[manifestDigest];
+                using var manifestStream = MockRegistryBlobClient.WriteStream(manifestBytes);
+                var manifest = OciSerialization.Deserialize<OciManifest>(manifestStream);
+                manifest.Should().NotBeNull();
+                manifest.ArtifactType.Should().Be("application/vnd.ms.bicep.module.artifact", "artifact type should be correct");
+
+                var config = manifest.Config;
+                config.MediaType.Should().Be("application/vnd.ms.bicep.module.config.v1+json", "config media type should be correct");
+                config.Size.Should().Be(0, "config should be empty");
+
+                this.Subject.Blobs.Should().ContainKey(config.Digest, "config digest should exist");
+
+                var configBytes = this.Subject.Blobs[config.Digest];
+                configBytes.Should().BeEmpty("config blob should be empty");
+
+                manifest.Layers.Should().HaveCount(1, "modules should have a single layer");
+                var layer = manifest.Layers.Single();
+
+                layer.MediaType.Should().Be("application/vnd.ms.bicep.module.layer.v1+json", "layer media type should be correct");
+                this.Subject.Blobs.Should().ContainKey(layer.Digest);
+
+                var layerBytes = this.Subject.Blobs[layer.Digest];
+                ((long)layerBytes.Length).Should().Be(layer.Size);
+
+                //var actualMainJsonStream = MockRegistryBlobClient.WriteStream(layerBytes).FromJsonStream<JToken>(); //asdfg using
+                //expectedMainJsonContent.Position = 0;
+                //var expectedMainJsonStream = expectedMainJsonContent.FromJsonStream<JToken>();
+                //expectedMainJsonStream.Should().NotBeNull();
+
+                //actualMainJsonStream.Should().DeepEqual(expectedMainJsonStream, "module content should match");
+            }
+
+            return new(this);
+        }
+
         public AndConstraint<MockRegistryAssertions> OnlyHaveModule(string tag, Stream expectedModuleContent)
         {
             using (new AssertionScope())
