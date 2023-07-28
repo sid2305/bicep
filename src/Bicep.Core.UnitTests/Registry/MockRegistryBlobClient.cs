@@ -3,13 +3,20 @@
 
 using Azure;
 using Azure.Containers.ContainerRegistry;
+using Azure.Core;
+using Azure.Core.Pipeline;
+using Bicep.Core.Registry;
 using Bicep.Core.Registry.Oci;
 using Bicep.Core.UnitTests.Mock;
+using MediatR;
+using Moq;
+using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.IO;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using MemoryStream = Bicep.Core.Debuggable.TextMemoryStream;
@@ -21,9 +28,33 @@ namespace Bicep.Core.UnitTests.Registry
     /// </summary>
     public class MockRegistryBlobClient : ContainerRegistryContentClient
     {
-        public MockRegistryBlobClient() : base()
+        private Mock<HttpPipeline> _pipeline = StrictMock.Of<HttpPipeline>();
+
+        private class MockPipeline : HttpPipeline
         {
-            // ensure we call the base parameterless constructor to prevent outgoing calls
+            public MockPipeline()
+                : base(StrictMock.Of<HttpPipelineTransport>().Object)
+            {
+            }
+        }
+
+        public MockRegistryBlobClient()
+        : base() // ensure we call the base parameterless constructor to prevent outgoing calls
+        {
+            _pipeline.Setup(m => m.SendRequestAsync(It.IsAny<Request>(), It.IsAny<CancellationToken>()))
+                .Callback((Request request, CancellationToken token) =>
+                {
+                    if (request.Method == RequestMethod.Get) {
+                        var uri = request.Uri;
+                        var matches = new Regex("/^(?<registry>.*)\\/v2\\/(?<repository>.*)\\/referrers\\/(?<digest>.*)$/").Matches(request.Uri.ToString());
+                        return new Response()
+                        {
+                            Content = "{}"
+                        };
+                    }
+
+                    throw new NotImplementedException();
+                });
         }
 
         // maps digest to blob bytes
@@ -34,6 +65,8 @@ namespace Bicep.Core.UnitTests.Registry
 
         // maps tag to manifest digest
         public ConcurrentDictionary<string, string> ManifestTags { get; } = new();
+
+        public override HttpPipeline Pipeline => _pipeline.Object;
 
         public override async Task<Response<DownloadRegistryBlobResult>> DownloadBlobContentAsync(string digest, CancellationToken cancellationToken = default)
         {
