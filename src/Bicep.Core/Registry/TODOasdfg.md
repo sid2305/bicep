@@ -68,6 +68,12 @@
 * [ ] show sources for nested external modules
 * [ ] show sources for nested local modules
 * [ ] add tracing?
+* //TODO
+    //[DataRow( // this can happen on windows, if the calling bicep file is on a different drive than the OCI cache drive
+    //    "d:/folder/my other bicep.bicep",
+    //    "d:/folder/my other bicep.bicep", //asdfg??
+    //    DisplayName = "HandlesPathsCorrectly: separate drives")]
+
 
 # LONG TERM
 * [ ] linter won't have bicepconfig.json

@@ -188,7 +188,7 @@ public class SourceArchiveTests
     [DataRow(
         "/my root/my other bicep.bicep",
         "../my other bicep.bicep",
-        DisplayName = "HandlesPathsCorrectly: ..")] //asdfg not working - not putting into archive?
+        DisplayName = "HandlesPathsCorrectly: ..")]
     [DataRow(
         "/my other bicep.bicep",
         "../../my other bicep.bicep",
@@ -197,7 +197,8 @@ public class SourceArchiveTests
         "/folder/my other bicep.bicep",
         "../../folder/my other bicep.bicep",
         DisplayName = "HandlesPathsCorrectly: ../../folder")]
-    //[DataRow( //asdfg?   could possibly get this situation with cached modules on windows
+    //TODO
+    //[DataRow( // this can happen on windows, if the calling bicep file is on a different drive than the OCI cache drive
     //    "d:/folder/my other bicep.bicep",
     //    "d:/folder/my other bicep.bicep", //asdfg??
     //    DisplayName = "HandlesPathsCorrectly: separate drives")]
