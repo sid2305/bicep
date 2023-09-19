@@ -996,7 +996,7 @@ param foo|bar = true
             SharedLanguageHelperManager sharedLanguageHelperManager = new();
             sharedLanguageHelperManager.Initialize(
                 async () => await MultiFileLanguageServerHelper.StartLanguageServer(
-                    TestContext, 
+                    TestContext,
                     services => services
                         .WithFeatureProviderFactory(featureProviderFactory)
                         .WithModuleDispatcher(moduleDispatcher)
@@ -1039,12 +1039,17 @@ param foo|bar = true
             var file = SourceFileFactory.CreateBicepFile(parentModuleUri, bicepFileContents);
             var moduleDeclarationSyntax = programSyntax.Declarations.OfType<ModuleDeclarationSyntax>().Single();
 
-            ArtifactReference? ociArtifactModuleReference = OciArtifactModuleReferenceHelper.GetModuleReferenceAndSaveManifestFile(
+            OciModuleRegistryHelper.SaveManifestFileToModuleRegistryCache(
                 TestContext,
                 registry,
                 repository,
                 manifestFileContents,
                 testOutputPath,
+                digest,
+                tag);
+            ArtifactReference? ociArtifactModuleReference = OciModuleRegistryHelper.CreateModuleReferenceMock(
+                registry,
+                repository,
                 parentModuleUri,
                 digest,
                 tag);

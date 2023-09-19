@@ -2,10 +2,7 @@
 // Licensed under the MIT License.
 
 using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Diagnostics.CodeAnalysis;
-using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -39,12 +36,16 @@ namespace Bicep.Core.Registry.Oci
         public int SchemaVersion { get; }
 
         public string? MediaType { get; }
-
         public string? ArtifactType { get; }
 
         public OciDescriptor Config { get; }
 
         public ImmutableArray<OciDescriptor> Layers { get; }
+
+        /// <summary>
+        /// Reference to a separate manfest that this manifest is being attached to
+        /// </summary>
+        public OciDescriptor? Subject { get; }
 
         /// <summary>
         /// Additional information provided through arbitrary metadata.

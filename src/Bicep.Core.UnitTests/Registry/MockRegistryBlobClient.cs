@@ -3,11 +3,13 @@
 
 using Azure;
 using Azure.Containers.ContainerRegistry;
+using Bicep.Core.Json;
 using Bicep.Core.Registry.Oci;
 using Bicep.Core.UnitTests.Mock;
 using Bicep.Core.UnitTests.Utils;
 using Microsoft.WindowsAzure.ResourceStack.Common.Extensions;
 using Moq;
+using SharpYaml.Tokens;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -16,8 +18,10 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using static Bicep.Core.Emit.ParameterAssignmentEvaluator;
 
 namespace Bicep.Core.UnitTests.Registry
 {
@@ -29,10 +33,15 @@ namespace Bicep.Core.UnitTests.Registry
         public MockRegistryBlobClient() : base()
         {
             // ensure we call the base parameterless constructor to prevent outgoing calls
+
+            BlobUploads = 0;
         }
 
         // maps digest to blob bytes
         public ConcurrentDictionary<string, TextByteArray> Blobs { get; } = new();
+
+        // May be different than number of actual blobs because blobs with the same contents get stored only once
+        public int BlobUploads { get; private set; }
 
         // maps digest to manifest bytes
         public ConcurrentDictionary<string, TextByteArray> Manifests { get; } = new();
@@ -47,6 +56,14 @@ namespace Bicep.Core.UnitTests.Registry
             ManifestObjects
             .Where(kvp => kvp.Value.ArtifactType == BicepMediaTypes.BicepModuleArtifactType)
             .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+
+/*asdfg?
+        public IDictionary<string, OciManifest> SourceManifestObjects =>
+            ManifestObjects
+            .Where(kvp => kvp.Value.ArtifactType == BicepMediaTypes.BicepSourceArtifactType)
+            .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+
+*/
 
         public override async Task<Response<DownloadRegistryBlobResult>> DownloadBlobContentAsync(string digest, CancellationToken cancellationToken = default)
         {
@@ -93,7 +110,9 @@ namespace Bicep.Core.UnitTests.Registry
             var (copy, digest) = ReadStream(stream);
             Blobs.TryAdd(digest, new TextByteArray(copy));
 
-            return CreateResult(ContainerRegistryModelFactory.UploadRegistryBlobResult(digest, copy.Length));
+            var result = CreateResult(ContainerRegistryModelFactory.UploadRegistryBlobResult(digest, copy.Length));
+            ++BlobUploads;
+            return result;
         }
 
         public override async Task<Response<SetManifestResult>> SetManifestAsync(BinaryData manifest, string? tag = default, ManifestMediaType? mediaType = default, CancellationToken cancellationToken = default)
@@ -138,5 +157,63 @@ namespace Bicep.Core.UnitTests.Registry
 
             return result.Object;
         }
+
+//asdfg
+        // public async Task<Response> SendGetReferrersRequestAsync(string manifestDigest)
+        // {
+        //     /* Example JSON result:
+        //         {
+        //           "schemaVersion": 2,
+        //           "mediaType": "application/vnd.oci.image.index.v1+json",
+        //           "manifests": [
+        //             {
+        //               "mediaType": "application/vnd.oci.image.manifest.v1+json",
+        //               "digest": "sha256:210a9f9e8134fc77940ea17f971adcf8752e36b513eb7982223caa1120774284",
+        //               "size": 811,
+        //               "artifactType": "application/vnd.ms.bicep.module.sources"
+        //             },
+        //             ...
+        //     */
+
+        //     Debug.Assert(manifestDigest != null);
+
+        //     await Task.Delay(1);
+
+        //     string resultString;
+        //     var manifest = await GetManifestAsync(manifestDigest);
+        //     if (manifest.Value is null)
+        //     {
+        //         resultString = @"{
+        //             ""schemaVersion"": 2,
+        //             ""mediaType"": ""application/vnd.oci.image.index.v1+json"",
+        //             ""manifests"": []
+        //         }";
+        //     }
+        //     else
+        //     {
+        //         var referringManifests = ManifestObjects.Where(m => m.Value.Subject?.Digest == manifestDigest);
+        //         resultString = @"{
+        //             ""schemaVersion"": 2,
+        //             ""mediaType"": ""application/vnd.oci.image.index.v1+json"",
+        //             ""manifests"": ["
+        //         + string.Join(",", referringManifests.Select(m =>
+        //             @$"{{
+        //               ""mediaType"": ""application/vnd.oci.image.manifest.v1+json"",
+        //               ""digest"": ""{m.Key}"",
+        //               ""size"": {Manifests[m.Key].Bytes.Length},
+        //               ""artifactType"": ""{m.Value.ArtifactType ?? m.Value.MediaType}""
+        //             }}"
+        //             ).ToArray())
+        //         + @"]
+        //         }
+        //     ";
+        //     }
+
+        //     var response = StrictMock.Of<Response>();
+        //     response.SetupGet(m => m.IsError).Returns(false);
+        //     response.SetupGet(m => m.Content).Returns(new BinaryData(resultString));
+
+        //     return response.Object;
+        // }
     }
 }
