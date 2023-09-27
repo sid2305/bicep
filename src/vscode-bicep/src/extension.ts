@@ -58,6 +58,7 @@ import { setGlobalStateKeysToSyncBetweenMachines } from "./globalState";
 import * as surveys from "./feedback/surveys";
 import { DecompileParamsCommand } from "./commands/decompileParams";
 import { DeployPaneViewManager } from "./panes/deploy";
+import { DraggableResourcesViewProvider } from "./webviews/draggable-resources-view/provider";
 
 let languageClient: lsp.LanguageClient | null = null;
 
@@ -227,6 +228,16 @@ export async function activate(
           workspace.onDidSaveTextDocument(async (_d: TextDocument) => {
             await updateUiContext(window.activeTextEditor?.document);
           }),
+        );
+
+        const draggableResourcesViewProvider =
+          new DraggableResourcesViewProvider(extension.extensionUri);
+
+        extension.register(
+          window.registerWebviewViewProvider(
+            "bicep-draggable-resources.view",
+            draggableResourcesViewProvider,
+          ),
         );
 
         await languageClient.start();
