@@ -13,8 +13,9 @@ export class DraggableResourcesViewProvider
     this.extensionUri = extensionUri;
     this.rootUri = vscode.Uri.joinPath(
       this.extensionUri,
-      "webview-apps",
-      "draggable-resources-view",
+      "ui",
+      "apps",
+      "resource-type-explorer",
       "out",
       "assets",
     );
