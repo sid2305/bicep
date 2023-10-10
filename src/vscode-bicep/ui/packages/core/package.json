@@ -1,5 +1,5 @@
 {
-  "name": "wysiwyg-explorer",
+  "name": "core",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -10,12 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@vscode-bicep/ui-icons": "file:../../packages/icons",
-    "@vscode/webview-ui-toolkit": "^1.2.2",
-    "framer-motion": "^10.16.4",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "styled-components": "^6.0.8"
+    "react-dom": "^18.2.0"
   },
   "devDependencies": {
     "@types/react": "^18.2.15",
@@ -27,7 +23,6 @@
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.3",
     "typescript": "^5.0.2",
-    "vite": "^4.4.5",
-    "vite-plugin-svgr": "^4.0.0"
+    "vite": "^4.4.5"
   }
 }

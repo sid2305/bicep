@@ -23,26 +23,30 @@ const svgPathsByResourceType: Record<string, string> = {
     "networking/10062-icon-service-Load-Balancers",
 
   "microsoft.web/serverfarms":
-    "appServices/00046-icon-service-App-Service-Plans",
-  "microsoft.web/sites": "appServices/10035-icon-service-App-Services",
+    "app-services/00046-icon-service-App-Service-Plans",
+  "microsoft.web/sites": "app-services/10035-icon-service-App-Services",
 };
 
-async function importAzureSvgWithFallback(
+async function tryImportAzureSvg(
   resourceType: string,
-): Promise<SvgComponent> {
+): Promise<SvgComponent | undefined> {
   resourceType = resourceType.toLowerCase();
 
   if (resourceType in svgPathsByResourceType) {
     const svgPath = svgPathsByResourceType[resourceType];
     const svgImport = svgImportsByPath[`../assets/icons/azure/${svgPath}.svg`];
 
-    return svgImport ? svgImport() : ResourceSvg;
+    return svgImport?.();
   }
 
-  return ResourceSvg;
+  return undefined;
 }
 
-export function useAzureSvg(resourceType: string) {
+export function useAzureSvg(
+  resourceType: string,
+):
+  | { loading: true; AzureSvg: undefined }
+  | { loading: false; AzureSvg: SvgComponent } {
   const svgRef = useRef<SvgComponent>(ResourceSvg);
   const [loading, setLoading] = useState(false);
 
@@ -51,7 +55,7 @@ export function useAzureSvg(resourceType: string) {
 
     const loadIcon = async () => {
       try {
-        svgRef.current = await importAzureSvgWithFallback(resourceType);
+        svgRef.current = (await tryImportAzureSvg(resourceType)) ?? ResourceSvg;
       } catch (err) {
         console.log(err);
       } finally {
@@ -62,5 +66,7 @@ export function useAzureSvg(resourceType: string) {
     loadIcon();
   }, [resourceType]);
 
-  return { loading, AzureSvg: svgRef.current };
+  return loading
+    ? { loading, AzureSvg: undefined }
+    : { loading, AzureSvg: svgRef.current };
 }

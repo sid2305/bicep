@@ -6,7 +6,7 @@ import { Accordion } from "./components/Accordion/Accordion";
 import { AccordionHeader } from "./components/Accordion/AccordionHeader";
 import { AccordionPanel } from "./components/Accordion/AccordionPanel";
 // import { SvgIcon } from "./components/Icons";
-import { AzureIcon } from "./components/Icons/AzureIcon";
+import { AzureIcon } from "@vscode-bicep/ui-icons";
 import { List } from "./components/List/List";
 
 const resourceTypeCatalog = {
@@ -31,7 +31,7 @@ function App() {
                   items={resourceTypes}
                   renderItem={(resourceType) => (
                     <span>
-                    <AzureIcon resourceType={resourceType} />
+                    <AzureIcon resourceType={resourceType} size={20} />
                     {resourceType}
                     </span>
                   )}
