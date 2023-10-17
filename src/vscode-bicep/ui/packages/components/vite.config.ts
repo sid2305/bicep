@@ -11,7 +11,7 @@ export default defineConfig({
     react(),
     svgr(),
     dts({
-      exclude: ["**/*.stories.ts", "**/*.stories.tsx", "**/use-*.ts"],
+      include: ["src/**/index.ts", "src/**/*.tsx"],
       insertTypesEntry: true,
     }),
     // libInjectCss(),
