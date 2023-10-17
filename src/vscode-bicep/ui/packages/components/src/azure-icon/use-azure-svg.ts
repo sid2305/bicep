@@ -31,20 +31,20 @@ const svgImportsByPath = import.meta.glob<SvgComponent>(
   },
 );
 
-async function tryImportAzureSvg(
+async function importAzureSvg(
   resourceType: string,
 ): Promise<SvgComponent | undefined> {
   resourceType = resourceType.toLowerCase();
 
-  if (resourceType in svgPathsByResourceType) {
-    const svgPath = svgPathsByResourceType[resourceType] ?? "custom/resource";
-    const svgImport =
-      svgImportsByPath[`../../assets/azure-architecture-icons/${svgPath}.svg`];
+  // if (resourceType in svgPathsByResourceType) {
+  const svgPath = svgPathsByResourceType[resourceType] ?? "custom/resource";
+  const svgImport =
+    svgImportsByPath[`../../assets/azure-architecture-icons/${svgPath}.svg`];
 
-    return svgImport?.();
-  }
+  return svgImport();
+  // }
 
-  return undefined;
+  // return undefined;
 }
 
 export function useAzureSvg(resourceType: string) {
@@ -56,7 +56,7 @@ export function useAzureSvg(resourceType: string) {
 
     const loadIcon = async () => {
       try {
-        svgRef.current = await tryImportAzureSvg(resourceType);
+        svgRef.current = await importAzureSvg(resourceType);
       } catch (err) {
         console.log(err);
       } finally {
