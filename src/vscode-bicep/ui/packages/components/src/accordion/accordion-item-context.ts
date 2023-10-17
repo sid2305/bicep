@@ -1,6 +1,6 @@
 import { createContext } from "react";
 
-interface AccordionItemContextType {
+export interface AccordionItemContextType {
   active: boolean;
   toggleActive(): void;
 }

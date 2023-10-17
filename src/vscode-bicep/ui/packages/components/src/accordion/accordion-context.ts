@@ -1,7 +1,7 @@
 import { createContext } from "react";
 import { AccordionItemId } from "./types";
 
-interface AccordionContextType {
+export interface AccordionContextType {
   activeItemId: AccordionItemId;
   setActiveItemId(index: AccordionItemId): void;
 }

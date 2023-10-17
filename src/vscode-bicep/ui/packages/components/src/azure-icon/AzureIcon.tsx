@@ -26,7 +26,7 @@ export function AzureIcon({ resourceType, size }: AzureIconProps) {
 
   return (
     <$AzureIcon $size={size}>
-      {!loading && <AzureSvg width="100%" height="100%" />}
+      {!loading && AzureSvg && <AzureSvg width="100%" height="100%" />}
     </$AzureIcon>
   );
 }

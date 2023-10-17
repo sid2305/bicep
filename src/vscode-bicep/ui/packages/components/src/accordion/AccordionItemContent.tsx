@@ -1,13 +1,8 @@
 import { PropsWithChildren } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import styled from "styled-components";
 import { useAccordionItem } from "./use-accordion-item";
 
-const $AccordionContent = styled(motion.div)`
-  padding: 20px;
-`;
-
-export function AccordionContent({ children }: PropsWithChildren) {
+export function AccordionItemContent({ children }: PropsWithChildren) {
   const { active } = useAccordionItem();
 
   return (
@@ -24,7 +19,7 @@ export function AccordionContent({ children }: PropsWithChildren) {
           }}
           transition={{ type: "spring", duration: 0.4, bounce: 0 }}
         >
-          <$AccordionContent>{children}</$AccordionContent>
+          <motion.div>{children}</motion.div>
         </motion.section>
       )}
     </AnimatePresence>

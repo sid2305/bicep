@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from "react";
-import ResourceSvg from "../../assets/azure-architecture-icons/custom/resource.svg?react";
+import { FunctionComponent, useEffect, useRef, useState } from "react";
+import { SVGProps } from "react";
+// import ResourceSvg from "../../assets/azure-architecture-icons/custom/resource.svg?react";
 
-type SvgComponent = typeof ResourceSvg;
+type SvgComponent = FunctionComponent<SVGProps<SVGSVGElement>>;
 
 const svgPathsByResourceType: Record<string, string> = {
   // Microsoft.Compute
@@ -30,15 +31,15 @@ const svgImportsByPath = import.meta.glob<SvgComponent>(
   },
 );
 
-
 async function tryImportAzureSvg(
   resourceType: string,
 ): Promise<SvgComponent | undefined> {
   resourceType = resourceType.toLowerCase();
 
   if (resourceType in svgPathsByResourceType) {
-    const svgPath = svgPathsByResourceType[resourceType];
-    const svgImport = svgImportsByPath[`../../assets/azure-architecture-icons/${svgPath}.svg`];
+    const svgPath = svgPathsByResourceType[resourceType] ?? "custom/resource";
+    const svgImport =
+      svgImportsByPath[`../../assets/azure-architecture-icons/${svgPath}.svg`];
 
     return svgImport?.();
   }
@@ -46,12 +47,8 @@ async function tryImportAzureSvg(
   return undefined;
 }
 
-export function useAzureSvg(
-  resourceType: string,
-):
-  | { loading: true; AzureSvg: undefined }
-  | { loading: false; AzureSvg: SvgComponent } {
-  const svgRef = useRef<SvgComponent>(ResourceSvg);
+export function useAzureSvg(resourceType: string) {
+  const svgRef = useRef<SvgComponent>();
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -59,7 +56,7 @@ export function useAzureSvg(
 
     const loadIcon = async () => {
       try {
-        svgRef.current = (await tryImportAzureSvg(resourceType)) ?? ResourceSvg;
+        svgRef.current = await tryImportAzureSvg(resourceType);
       } catch (err) {
         console.log(err);
       } finally {
@@ -70,7 +67,5 @@ export function useAzureSvg(
     loadIcon();
   }, [resourceType]);
 
-  return loading
-    ? { loading, AzureSvg: undefined }
-    : { loading, AzureSvg: svgRef.current };
+  return { loading, AzureSvg: svgRef.current };
 }
