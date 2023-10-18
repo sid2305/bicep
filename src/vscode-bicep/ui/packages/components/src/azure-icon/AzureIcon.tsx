@@ -16,6 +16,7 @@ const $AzureIcon = styled.div<{ $size: number }>`
   width: ${(props) => props.$size}px;
   height: ${(props) => props.$size}px;
   text-align: center;
+  display: inline-block;
 `;
 
 /**

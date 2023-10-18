@@ -1,13 +1,7 @@
 // import ReactLogo from "./assets/react.svg?react";
 // import ViteLogo from "/vite.svg";
 import "./App.css";
-import { AccordionGroup } from "./components/Accordion/AccordionGroup";
-import { Accordion } from "./components/Accordion/Accordion";
-import { AccordionHeader } from "./components/Accordion/AccordionHeader";
-import { AccordionPanel } from "./components/Accordion/AccordionPanel";
-// import { SvgIcon } from "./components/Icons";
-import { AzureIcon } from "@vscode-bicep/ui-icons";
-import { List } from "./components/List/List";
+import { Accordion, AzureIcon, List } from "@vscode-bicep/ui-components";
 
 const resourceTypeCatalog = {
   "Microsoft.Compute": [
@@ -21,32 +15,25 @@ function App() {
   return (
     <section className="App">
       <h2>collapsible</h2>
-      <AccordionGroup>
+      <Accordion>
         {Object.entries(resourceTypeCatalog).map(
           ([provider, resourceTypes], i) => (
-            <Accordion key={i}>
-              <AccordionHeader>{provider}</AccordionHeader>
-              <AccordionPanel>
-                <List
-                  items={resourceTypes}
-                  renderItem={(resourceType) => (
-                    <span>
-                    <AzureIcon resourceType={resourceType} size={20} />
-                    {resourceType}
-                    </span>
-                  )}
-                />
-                {/* <SvgIcon iconPath="azure/compute/10021-icon-service-Virtual-Machine" /> */}
-                {/* <AzureIcon resourceType={`/virtualMachines`} /> */}
-                {/* Lorem ipsum dolor sit amet consectetur adipisicing elit. Eos
-                quod explicabo, nam sapiente id nostrum ex, ab numquam,
-                doloremque aspernatur quisquam illo! Officiis explicabo laborum
-                incidunt corrupti provident esse eligendi. */}
-              </AccordionPanel>
-            </Accordion>
+            <Accordion.Item key={i}>
+              <Accordion.Header>{provider}</Accordion.Header>
+              <Accordion.Content>
+                <List>
+                  {resourceTypes.map((resourceType, j) => (
+                    <List.Item key={j}>
+                      <AzureIcon resourceType={resourceType} size={20} />
+                      <span>{resourceType.split('/')[1]}</span>
+                    </List.Item>
+                  ))}
+                </List>
+              </Accordion.Content>
+            </Accordion.Item>
           ),
         )}
-      </AccordionGroup>
+      </Accordion>
     </section>
   );
 }
