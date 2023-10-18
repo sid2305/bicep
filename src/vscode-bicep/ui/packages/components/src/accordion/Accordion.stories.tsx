@@ -15,6 +15,7 @@ const meta = {
   tags: ["autodocs"],
   parameters: {
     layout: "padded",
+    controls: { hideNoControlsWarning: true },
   },
 } satisfies Meta<typeof Accordion>;
 
@@ -48,9 +49,6 @@ function HeaderContent({ children }: PropsWithChildren) {
 }
 
 export const TextItems: Story = {
-  parameters: {
-    controls: { hideNoControlsWarning: true },
-  },
   render: () => (
     <Accordion>
       {[...Array(4)].map((_, i) => (
