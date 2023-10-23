@@ -3,12 +3,6 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "scripts": {
-    "dev": "storybook dev -p 6006",
-    "build": "tsc && vite build",
-    "build:storybook": "storybook build",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
-  },
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
@@ -17,6 +11,12 @@
   "sideEffects": [
     "**/*.css"
   ],
+  "scripts": {
+    "dev": "storybook dev -p 6006",
+    "build": "tsc && vite build",
+    "build:storybook": "storybook build",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
+  },
   "peerDependencies": {
     "framer-motion": "^10.16.4",
     "react": "^18.2.0",
