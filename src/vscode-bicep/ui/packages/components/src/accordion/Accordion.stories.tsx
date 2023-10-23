@@ -1,13 +1,13 @@
 import type { Meta, StoryObj } from "@storybook/react";
+import styled, { css } from "styled-components";
+import { motion } from "framer-motion";
+import { PropsWithChildren } from "react";
 
 import { Accordion } from "./Accordion";
 import { AccordionItem } from "./AccordionItem";
 import { AccordionItemHeader } from "./AccordionItemHeader";
 import { AccordionItemContent } from "./AccordionItemContent";
-import styled, { css } from "styled-components";
-import { motion } from "framer-motion";
 import { useAccordionItem } from "./use-accordion-item";
-import { PropsWithChildren } from "react";
 
 const meta = {
   title: "Examples/Accordion",

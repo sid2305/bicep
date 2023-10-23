@@ -6,8 +6,8 @@ import { useAccordionItem } from "./use-accordion-item";
 
 const Accordion = Object.assign(AccordionComponent, {
   Item: AccordionItem,
-  Header: AccordionItemHeader,
-  Content: AccordionItemContent,
+  ItemHeader: AccordionItemHeader,
+  ItemContent: AccordionItemContent,
 });
 
 export { Accordion, useAccordionItem };

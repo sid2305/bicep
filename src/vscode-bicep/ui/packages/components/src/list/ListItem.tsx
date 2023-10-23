@@ -1,5 +1,7 @@
-import { PropsWithChildren } from "react";
+import styled from "styled-components";
 
-export function ListItem({ children }: PropsWithChildren) {
-  return <li>{children}</li>;
-}
+export const ListItem = styled.li`
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+`;

@@ -1,4 +1,13 @@
 import type { Preview } from "@storybook/react";
+import { withThemeFromJSXProvider } from '@storybook/addon-themes';
+import { createGlobalStyle } from "styled-components";
+
+const GlobalStyles = createGlobalStyle`
+  body {
+    font-family: Segoe WPC,Segoe UI,sans-serif;
+    font-size: 13px;
+  }
+`;
 
 const preview: Preview = {
   parameters: {
@@ -11,5 +20,11 @@ const preview: Preview = {
     },
   },
 };
+
+export const decorators = [
+  withThemeFromJSXProvider({
+    GlobalStyles, // Adds your GlobalStyle component to all stories
+  }),
+];
 
 export default preview;
