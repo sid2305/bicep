@@ -2,7 +2,7 @@ import { webviewApi } from "./webview-api";
 
 type MessageResponseCallback = (response: unknown, error: unknown) => void;
 
-export class WebviewMessageChannel {
+class WebviewMessageChannel {
   private readonly callbacks: Record<string, MessageResponseCallback>;
   private readonly onMessage: (messageEvent: MessageEvent) => void;
 

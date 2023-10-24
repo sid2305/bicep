@@ -6,7 +6,7 @@ const $AccordionItemHeader = styled.div`
   cursor: pointer;
 `;
 
-export function AccordionItemHeader({ children }: PropsWithChildren) {
+export function AccordionItemCollapse({ children }: PropsWithChildren) {
   const { toggleActive } = useAccordionItem();
 
   return (

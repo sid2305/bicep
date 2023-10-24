@@ -1,35 +1,26 @@
-// import ReactLogo from "./assets/react.svg?react";
-// import ViteLogo from "/vite.svg";
-import "./App.css";
-import { Accordion, AzureIcon, List } from "@vscode-bicep/ui-components";
-
-const resourceTypeCatalog = {
-  "Microsoft.Compute": [
-    "Microsoft.Compute/virtualMachines",
-    "Microsoft.Compute/virtualMachineScaleSets",
-  ],
-  "Microsoft.Web": ["Microsoft.Web/serverfarms", "Microsoft.Web/sites"],
-};
+import { Accordion } from "@vscode-bicep/ui-components";
+import { ResourceTypeList } from "./components/resource-type-list";
+import { ResourceProviderHeader } from "./components/resource-provider-header";
+import { useResourceTypeCatalog } from "./hooks/use-resource-type-catalog";
 
 function App() {
+  const resourceTypeCatalog = useResourceTypeCatalog();
+
   return (
-    <section className="App">
-      <h2>collapsible</h2>
+    <section>
       <Accordion>
         {Object.entries(resourceTypeCatalog).map(
-          ([provider, resourceTypes], i) => (
+          ([resourceProvider, resourceTypes], i) => (
             <Accordion.Item key={i}>
-              <Accordion.Header>{provider}</Accordion.Header>
-              <Accordion.Content>
-                <List>
-                  {resourceTypes.map((resourceType, j) => (
-                    <List.Item key={j}>
-                      <AzureIcon resourceType={resourceType} size={20} />
-                      <span>{resourceType.split('/')[1]}</span>
-                    </List.Item>
-                  ))}
-                </List>
-              </Accordion.Content>
+              <Accordion.ItemCollapse>
+                <ResourceProviderHeader resourceProvider={resourceProvider} />
+              </Accordion.ItemCollapse>
+              <Accordion.ItemContent>
+                <ResourceTypeList
+                  resourceProvider={resourceProvider}
+                  resourceTypes={resourceTypes}
+                />
+              </Accordion.ItemContent>
             </Accordion.Item>
           ),
         )}

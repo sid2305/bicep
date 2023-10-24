@@ -5,7 +5,7 @@ import { PropsWithChildren } from "react";
 
 import { Accordion } from "./Accordion";
 import { AccordionItem } from "./AccordionItem";
-import { AccordionItemHeader } from "./AccordionItemHeader";
+import { AccordionItemCollapse } from "./AccordionItemCollapse";
 import { AccordionItemContent } from "./AccordionItemContent";
 import { useAccordionItem } from "./use-accordion-item";
 
@@ -53,9 +53,9 @@ export const TextItems: Story = {
     <Accordion>
       {[...Array(4)].map((_, i) => (
         <AccordionItem key={i}>
-          <AccordionItemHeader>
+          <AccordionItemCollapse>
             <HeaderContent>Accordion Item {i}</HeaderContent>
-          </AccordionItemHeader>
+          </AccordionItemCollapse>
           <AccordionItemContent>
             <TextBlock>
               Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
