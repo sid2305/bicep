@@ -33,7 +33,7 @@ describe("webviewMessageChannel", () => {
   });
 
   describe("sendRequest", () => {
-    it("should resolve a response when there is no error", async () => {
+    it("should resolve upon success", async () => {
       const response =
         await webviewMessageChannel.sendRequest<MockResponseMessage>({
           kind: "ReturnResponse",
@@ -42,7 +42,7 @@ describe("webviewMessageChannel", () => {
       expect(response).toBe("Mock response");
     });
 
-    it("should reject when there is an error", async () => {
+    it("should reject upon error", async () => {
       await expect(() =>
         webviewMessageChannel.sendRequest<MockResponseMessage>({
           kind: "ReturnError",
