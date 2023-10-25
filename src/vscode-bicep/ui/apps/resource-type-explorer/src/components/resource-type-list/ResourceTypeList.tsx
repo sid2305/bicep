@@ -9,7 +9,7 @@ interface ResourceTypeListProps {
 }
 
 const $ResourceTypeList = styled(List)`
-  padding: 0 10px;
+  padding: 0;
 `;
 
 export function ResourceTypeList({
