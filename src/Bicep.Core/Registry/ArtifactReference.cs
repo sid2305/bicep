@@ -16,7 +16,7 @@ namespace Bicep.Core.Registry
             ParentModuleUri = parentModuleUri;
         }
 
-        public string Scheme { get; }
+        public string Scheme { get; } //asdfg should this be in parts?
 
         /// <summary>
         /// The URI of the template in which this artifact reference appears.
