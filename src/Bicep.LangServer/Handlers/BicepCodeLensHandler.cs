@@ -53,19 +53,20 @@ namespace Bicep.LanguageServer.Handlers
         public override Task<CodeLensContainer> Handle(CodeLensParams request, CancellationToken cancellationToken)
         {
             // Create a range for the entire document
-            var documentRange = new Range(new Position(0, 0), new Position(int.MaxValue, int.MaxValue));
+            //var documentRange = new Range(new Position(0, 0), new Position(int.MaxValue, int.MaxValue));
 
             // Create a code lens with a constant example string or markdown
             var codeLens = new CodeLens
-            {
-                Range = documentRange,
-                Command = new Command
-                {
-                    Title = "The source for this module is not available.",
-                    Name = "example.command",
-                    Arguments = null
-                }
-            };
+            //{
+            //    Range = documentRange,
+            //    Command = new Command
+            //    {
+            //        Title = "The source for this module is not available.",
+            //        Name = "example.command",
+            //        Arguments = null
+            //    }
+            //};
+            ();
 
             // Return the code lens in an array
             return Task.FromResult(new CodeLensContainer(new[] { codeLens }));

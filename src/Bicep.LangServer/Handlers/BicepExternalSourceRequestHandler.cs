@@ -17,32 +17,32 @@ using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 
 namespace Bicep.LanguageServer.Handlers
 {
-    [Method(BicepRegistryCacheRequestHandler.BicepCacheLspMethod, Direction.ClientToServer)]
+    [Method(BicepExternalSourceRequestHandler.BicepExternalSourceLspMethodName, Direction.ClientToServer)]
     public record BicepRegistryCacheParams(
         TextDocumentIdentifier TextDocument, // The bicep file which contains a reference to the target module
         string Target                        // The module reference to display sources for
-    ) : ITextDocumentIdentifierParams, IRequest<BicepRegistryCacheResponse>;
+    ) : ITextDocumentIdentifierParams, IRequest<BicepExternalSourceResponse>;
 
-    public record BicepRegistryCacheResponse(string Content);
+    public record BicepExternalSourceResponse(string Content);
 
     /// <summary>
-    /// Handles textDocument/bicepCache LSP requests. These are sent by clients that are resolving contents of document URIs using the bicep-cache:// scheme.
+    /// Handles textDocument/bicepExternalSource LSP requests. These are sent by clients that are resolving contents of document URIs using the bicep-extsrc:// scheme.
     /// The BicepDefinitionHandler returns such URIs when definitions are inside modules that reside in the local module cache.
     /// </summary>
-    public class BicepRegistryCacheRequestHandler : IJsonRpcRequestHandler<BicepRegistryCacheParams, BicepRegistryCacheResponse>
+    public class BicepExternalSourceRequestHandler : IJsonRpcRequestHandler<BicepRegistryCacheParams, BicepExternalSourceResponse>
     {
-        public const string BicepCacheLspMethod = "textDocument/bicepCache";
+        public const string BicepExternalSourceLspMethodName = "textDocument/bicepExternalSource";
 
         private readonly IModuleDispatcher moduleDispatcher;
         private readonly IFileResolver fileResolver;
 
-        public BicepRegistryCacheRequestHandler(IModuleDispatcher moduleDispatcher, IFileResolver fileResolver)
+        public BicepExternalSourceRequestHandler(IModuleDispatcher moduleDispatcher, IFileResolver fileResolver)
         {
             this.moduleDispatcher = moduleDispatcher;
             this.fileResolver = fileResolver;
         }
 
-        public Task<BicepRegistryCacheResponse> Handle(BicepRegistryCacheParams request, CancellationToken cancellationToken)
+        public Task<BicepExternalSourceResponse> Handle(BicepRegistryCacheParams request, CancellationToken cancellationToken)
         {
             // If any of the following paths result in an exception being thrown (and surfaced client-side to the user),
             // it indicates a code defect client or server-side.
@@ -57,7 +57,7 @@ namespace Bicep.LanguageServer.Handlers
             if (!moduleReference.IsExternal)
             {
                 throw new InvalidOperationException(
-                    $"The specified module reference '{request.Target}' refers to a local module which is not supported by {BicepCacheLspMethod} requests.");
+                    $"The specified module reference '{request.Target}' refers to a local module which is not supported by {BicepExternalSourceLspMethodName} requests.");
             }
 
             if (this.moduleDispatcher.GetArtifactRestoreStatus(moduleReference, out _) != ArtifactRestoreStatus.Succeeded)
@@ -76,7 +76,7 @@ namespace Bicep.LanguageServer.Handlers
             {
                 // TODO: For now, we just proffer the main source file
                 var entrypointFile = sourceArchive.SourceFiles.Single(f => f.Path == sourceArchive.EntrypointPath);
-                return Task.FromResult(new BicepRegistryCacheResponse(entrypointFile.Contents));
+                return Task.FromResult(new BicepExternalSourceResponse(entrypointFile.Contents));
             }
 
             // No sources available, just retrieve the JSON source
@@ -86,7 +86,7 @@ namespace Bicep.LanguageServer.Handlers
                 throw new InvalidOperationException($"Unable to read file '{uri}'. {message}");
             }
 
-            return Task.FromResult(new BicepRegistryCacheResponse(contents));
+            return Task.FromResult(new BicepExternalSourceResponse(contents));
         }
     }
 }
