@@ -63,15 +63,17 @@ export class BicepExternalSourceContentProvider
   private bicepExternalSourceRequest(uri: vscode.Uri) {
     const { moduleReference, localPath } = this.decodeExternalSourceUri(uri);
     return {
-      textDocument: TextDocumentIdentifier.create(localPath),
+      parentTextDocument: TextDocumentIdentifier.create(localPath),
       target: moduleReference,
     };
   }
 
+  // NOTE: This should match the logic in BicepExternalSourceRequestHandler.GetExternalSourceLinkUri and
+  // also bicep\src\Bicep.LangServer.UnitTests\BicepExternalSourceRequestHandlerTests.cs.DecodeExternalSourceUri
   private decodeExternalSourceUri(uri: vscode.Uri): ExternalSource {
     //asdfg test
-    // The uri passed in has this format:
-    //   bicep-extsrc:{title}#{module-reference}#{local-cache-file-path}
+    // The uri passed in has this format (encoded):
+    //   bicep-extsrc:{title}#{module-reference}{encoded-#}{local-cache-file-path}
     const title = decodeURIComponent(uri.path);
     const hashIndex = uri.fragment.indexOf("#");
     const moduleReference = decodeURIComponent(

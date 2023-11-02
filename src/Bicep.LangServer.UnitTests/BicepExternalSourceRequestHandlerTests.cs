@@ -3,9 +3,13 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.IO.Abstractions;
 using System.IO.Abstractions.TestingHelpers;
+using System.Reflection.Metadata;
+using System.Security.Policy;
 using System.Threading.Tasks;
+using System.Web;
 using Bicep.Core.Configuration;
 using Bicep.Core.Diagnostics;
 using Bicep.Core.FileSystem;
@@ -261,20 +265,128 @@ namespace Bicep.LangServer.UnitTests.Handlers
         }
 
         //asdfg: repo with path (/ -> $)
-        [TestMethod]
-        public void GetExternalSourceLinkUri_asdfg()
-        {
-            string localCachedJsonPath = "/.bicep/br/myregistry.azurecr.io/bicep$myrepo/v1$/main.json";
-            Uri entrypointUri = new("/my entrypoint.bicep", UriKind.Absolute);
-            OciArtifactReference reference = new(ArtifactType.Module, "myregistry", "repo", "tag", null, new Uri("/parent.bicep", UriKind.Absolute));
+        //[TestMethod]
+        //public void GetExternalSourceLinkUri_asdfg()
+        //{
+        //    string localCachedJsonPath = "/.bicep/br/myregistry.azurecr.io/bicep$myrepo/v1$/main.json";
+        //    Uri entrypointUri = new("file:///my entrypoint.bicep", UriKind.Absolute);
+        //    OciArtifactReference reference = new(ArtifactType.Module, "myregistry", "repo", "tag", null, new Uri("file:///parent.bicep", UriKind.Absolute));
 
-            var sourceArchive = SourceArchive.FromStream(SourceArchive.PackSourcesIntoStream(
-                entrypointUri,
-                new Core.Workspaces.ISourceFile[] {
-                    SourceFileFactory.CreateBicepFile(entrypointUri, "metadata description = 'bicep module'")
-                }));
+        //    var sourceArchive = SourceArchive.FromStream(SourceArchive.PackSourcesIntoStream(
+        //        entrypointUri,
+        //        new Core.Workspaces.ISourceFile[] {
+        //            SourceFileFactory.CreateBicepFile(entrypointUri, "metadata description = 'bicep module'")
+        //        }));
+
+        //    var result = BicepExternalSourceRequestHandler.GetExternalSourceLinkUri(localCachedJsonPath, reference, sourceArchive);
+
+        //    DecodeExternalSourceUri(result).
+        //    //asdfg result.Should().Be("bicep-extsrc:br:myregistry/repo/tag/my entrypoint.bicep (repo:tag)#br%3Amyregistry%2Frepo%3Atag%23%5C.bicep%5Cbr%5Cmyregistry.azurecr.io%5Cbicep%24myrepo%5Cv1%24%5Cmy+entrypoint.bicep");
+        //}
+
+        //asdfg test w/o source
+
+        [DataRow("/.bicep/br/myregistry.azurecr.io/bicep$myrepo/v1$/main.json", "main.bicep")]
+        [DataRow("c:\\.bicep\\br\\myregistry.azurecr.io\\bicep$myrepo\\v1$\\main.json", "main.bicep")]
+        [DataRow("c:\\.bicep\\br\\myregistry.azurecr.io\\bicep$myrepo\\v1$\\main.json", "my entrypoint.bicep")]
+        [DataRow("c:\\.bicep\\br\\myregistry.azurecr.io\\bicep$myrepo\\v1$\\main.json", "my # entrypoint.bicep")]
+        [DataTestMethod]
+        public void GetExternalSourceLinkUri_CachedPathWithSource(string localCachedJsonPath, string bicepEntrypointFilename)
+        {
+            Uri result = GetExternalSourceLinkUri(localCachedJsonPath: localCachedJsonPath, entrypointUriString: $"file:///{bicepEntrypointFilename}");
+
+            DecodeExternalSourceUri(result).LocalCachedPath.Should().Be(localCachedJsonPath);
+        }
+
+        [DataRow("/.bicep/br/myregistry.azurecr.io/bicep$myrepo/v1$/main.json", "main.json")]
+        [DataRow("c:\\.bicep\\br\\myregistry.azurecr.io\\bicep$myrepo\\v1$\\main.json", "main.json")]
+        [DataTestMethod]
+        public void GetExternalSourceLinkUri_CachedPathWithoutSource(string localCachedJsonPath, string expectedEntrypoint)
+        {
+            Uri result = GetExternalSourceLinkUri(localCachedJsonPath: localCachedJsonPath, entrypointUriString: null);
+
+            DecodeExternalSourceUri(result).LocalCachedPath.Should().Be(localCachedJsonPath);
+        }
+
+        [DataRow("file:///entrypoint.bicep")]
+        //asdfg non-file::
+        [DataTestMethod]
+        public void GetExternalSourceLinkUri_EntrypointPath(string entrypointUriString)
+        {
+            Uri result = GetExternalSourceLinkUri(entrypointUriString: entrypointUriString);
+
+            string entryPointFilename = Path.GetFileName(DecodeExternalSourceUri(result).LocalCachedPath);
+            entryPointFilename.Should().Be(Path.GetFileName(entryPointFilename));
+        }
+
+        [DataRow("myregistry.azurecr.io", "bicep/myrepo/module1", "v1", null)]
+        //asdfg
+        [DataTestMethod]
+        public void GetExternalSourceLinkUri_(string registry, string repository, string? tag, string? digest)
+        {
+            Uri result = GetExternalSourceLinkUri(registry: registry, repository: repository, tag: tag, digest: digest);
+
+            //asdfg result.Should().Be("bicep-extsrc:br:myregistry/repo/tag/my entrypoint.bicep (repo:tag)#br%3Amyregistry%2Frepo%3Atag%23%5C.bicep%5Cbr%5Cmyregistry.azurecr.io%5Cbicep%24myrepo%5Cv1%24%5Cmy+entrypoint.bicep");
+        }
+
+        private Uri GetExternalSourceLinkUri(
+            string localCachedJsonPath = "/.bicep/br/myregistry.azurecr.io/bicep$myrepo/v1$/main.json",
+            string? entrypointUriString = "file:///my entrypoint.bicep", // Use null to indicate no source code is available
+            string registry = "myregistry.azurecr.io",
+            string repository = "file:///bicep/myrepo/module1",
+            string? tag = "v1",
+            string? digest = null
+            )
+        {
+            Uri? entrypointUri = entrypointUriString is { } ? new(entrypointUriString, UriKind.Absolute) : null;
+            OciArtifactReference reference = new(ArtifactType.Module, registry, repository, tag, digest, new Uri("file:///parent.bicep", UriKind.Absolute));
+
+            var sourceArchive = entrypointUri is { } ?
+                SourceArchive.FromStream(SourceArchive.PackSourcesIntoStream(
+                    entrypointUri,
+                    new Core.Workspaces.ISourceFile[] {
+                        SourceFileFactory.CreateBicepFile(entrypointUri, "metadata description = 'bicep module'")
+                    }))
+                : null;
 
             var result = BicepExternalSourceRequestHandler.GetExternalSourceLinkUri(localCachedJsonPath, reference, sourceArchive);
+
+            ValidateExternalSourceLinkUri(result);
+
+            return result;
+        }
+
+        private void ValidateExternalSourceLinkUri(Uri uri)
+        {
+            string link = uri.ToString();
+
+            link.Should().StartWith("bicep-extsrc:");
+            link.Should().MatchRegex("^bicep-extsrc:(br|ts):");
+            //asdfg link.Should().MatchRegex("^([^#]+)#([^#]+)#([^#]+)$", "it should contain exactly two #'s");
+
+            //asdfg DecodeExternalSourceUri(uri).LocalCachedPath.Should().EndWith("main.json");
+        }
+
+        private record ExternalSource(
+            string Title,
+            string ModuleReference,
+            string LocalCachedPath
+        );
+
+        private ExternalSource DecodeExternalSourceUri(Uri uri) {
+            // NOTE: This mimics the code in src\vscode-bicep\src\language\bicepExternalSourceContentProvider.ts
+            string title = HttpUtility.UrlDecode(uri.AbsolutePath);
+            string fragmentWithoutLeadingHash = uri.Fragment.Substring(1);
+
+            int hashIndex = fragmentWithoutLeadingHash.IndexOf("#");
+            hashIndex.Should().BeGreaterThan(0, "Should find a # in the fragment");
+
+            string moduleReference = HttpUtility.UrlDecode(fragmentWithoutLeadingHash.Substring(0, hashIndex));
+            string localPath = HttpUtility.UrlDecode((fragmentWithoutLeadingHash.Substring(hashIndex + 1)));
+
+            return new ExternalSource(title, moduleReference, localPath);
+
+            //asdfg getting: br:myregistry.azurecr.io/file:///bicep/myrepo/module1:v1
         }
     }
 }

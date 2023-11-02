@@ -106,6 +106,8 @@ namespace Bicep.LanguageServer.Handlers
         /// <returns>A bicep-extsrc: URI</returns>
         public static Uri GetExternalSourceLinkUri(string localCachedJsonPath, OciArtifactReference reference, SourceArchive? sourceArchive)
         {
+            // NOTE: This should match the logic in src\vscode\src\language\bicepExternalSourceContentProvider.ts:decodeExternalSourceUri
+
             Debug.Assert(Path.GetFileName(localCachedJsonPath).Equals("main.json", StringComparison.InvariantCulture), "A compiled module entrypoint should always be main.json");
 
             var sourceFilePath = localCachedJsonPath;
@@ -118,7 +120,7 @@ namespace Bicep.LanguageServer.Handlers
                 //   myentrypoint.bicep) so clients know to request the bicep instead of json, and so they know to use the
                 //   bicep language server to display the code.
                 //   e.g. "path/main.json" -> "path/myentrypoint.bicep"
-                // The "path/myentrypoint.bicep" path is virtual (doesn't actually exist).
+                // The "path/myentrypoint.bicep" is virtual (doesn't actually exist on disk)
                 entrypointFilename = Path.GetFileName(sourceArchive.EntrypointPath);
                 sourceFilePath = Path.Join(Path.GetDirectoryName(sourceFilePath), entrypointFilename);
             }
@@ -127,8 +129,9 @@ namespace Bicep.LanguageServer.Handlers
             sourceFilePath = WebUtility.UrlEncode(sourceFilePath);
             var fullyQualifiedReference = WebUtility.UrlEncode(reference.FullyQualifiedReference);
             var version = reference.Tag ?? reference.Digest;
+
             //var display = $"{reference.Scheme}:{reference.Registry}/{reference.Repository}/{entrypointFilename} ({reference.Tag ?? reference.Digest})";
-            var display = $"{reference.Scheme}:{reference.Registry}/{reference.Repository}/{version}/{entrypointFilename} ({Path.GetFileName(reference.Repository)}:{version})";
+            var friendlyTitle = $"{reference.Scheme}:{reference.Registry}/{reference.Repository}/{version}/{entrypointFilename} ({Path.GetFileName(reference.Repository)}:{version})";
 
             // Encode the source file path as a path and the fully qualified reference as a fragment.
             // VsCode will pass it to our language client, which will respond by requesting the source to display via
@@ -138,9 +141,10 @@ namespace Bicep.LanguageServer.Handlers
             //   source available (unencoded version):
             //     bicep-extsrc:br:myregistry.azurecr.io/myrepo:main.bicep (v1)#br:myregistry.azurecr.io/myrepo:v1#/Users/MyUserName/.bicep/br/registry.azurecr.io/myrepo/v1$/main.bicep
             //
-            //   source not available (unencoded version):
+            //   source not available (unencoded version)
+            //   NOTE: the second # will be encoded because it's part of the fragment
             //     bicep-extsrc:br:myregistry.azurecr.io/myrepo:main.json (v1)#br:myregistry.azurecr.io/myrepo:v1#/Users/MyUserName/.bicep/br/registry.azurecr.io/myrepo/v1$/main.json
-            return new Uri($"bicep-extsrc:{display}#{fullyQualifiedReference}#{sourceFilePath}");
+            return new Uri($"bicep-extsrc:{friendlyTitle}#{fullyQualifiedReference}#{sourceFilePath}");
         }
     }
 }
