@@ -25,7 +25,7 @@ using Moq;
 namespace Bicep.LangServer.UnitTests.Handlers
 {
     [TestClass]
-    public class BicepRegistryCacheRequestHandlerTests
+    public class BicepExternalSourceRequestHandlerTests
     {
         private static readonly IFileSystem MockFileSystem = new MockFileSystem(new Dictionary<string, MockFileData>()
         {
@@ -46,7 +46,7 @@ namespace Bicep.LangServer.UnitTests.Handlers
 
             var handler = new BicepExternalSourceRequestHandler(dispatcher.Object, resolver.Object);
 
-            var @params = new BicepRegistryCacheParams("/main.bicep", ModuleRefStr);
+            var @params = new BicepExternalSourceParams("/main.bicep", ModuleRefStr);
             (await FluentActions
                 .Awaiting(() => handler.Handle(@params, default))
                 .Should()
@@ -71,7 +71,7 @@ namespace Bicep.LangServer.UnitTests.Handlers
 
             var handler = new BicepExternalSourceRequestHandler(dispatcher.Object, resolver.Object);
 
-            var @params = new BicepRegistryCacheParams("/foo/bar/main.bicep", ModuleRefStr);
+            var @params = new BicepExternalSourceParams("/foo/bar/main.bicep", ModuleRefStr);
             (await FluentActions
                 .Awaiting(() => handler.Handle(@params, default))
                 .Should()
@@ -102,7 +102,7 @@ namespace Bicep.LangServer.UnitTests.Handlers
 
             var handler = new BicepExternalSourceRequestHandler(dispatcher.Object, resolver.Object);
 
-            var @params = new BicepRegistryCacheParams(parentModuleLocalPath, ModuleRefStr);
+            var @params = new BicepExternalSourceParams(parentModuleLocalPath, ModuleRefStr);
             (await FluentActions
                 .Awaiting(() => handler.Handle(@params, default))
                 .Should()
@@ -133,7 +133,7 @@ namespace Bicep.LangServer.UnitTests.Handlers
 
             var handler = new BicepExternalSourceRequestHandler(dispatcher.Object, resolver.Object);
 
-            var @params = new BicepRegistryCacheParams(parentModuleLocalPath, ModuleRefStr);
+            var @params = new BicepExternalSourceParams(parentModuleLocalPath, ModuleRefStr);
             (await FluentActions
                 .Awaiting(() => handler.Handle(@params, default))
                 .Should()
@@ -172,7 +172,7 @@ namespace Bicep.LangServer.UnitTests.Handlers
 
             var handler = new BicepExternalSourceRequestHandler(dispatcher.Object, resolver.Object);
 
-            var @params = new BicepRegistryCacheParams(fileUri.AbsolutePath, ModuleRefStr);
+            var @params = new BicepExternalSourceParams(fileUri.AbsolutePath, ModuleRefStr);
             (await FluentActions
                 .Awaiting(() => handler.Handle(@params, default))
                 .Should()
@@ -212,7 +212,7 @@ namespace Bicep.LangServer.UnitTests.Handlers
 
             var handler = new BicepExternalSourceRequestHandler(dispatcher.Object, resolver.Object);
 
-            var @params = new BicepRegistryCacheParams(fileUri.AbsolutePath, ModuleRefStr);
+            var @params = new BicepExternalSourceParams(fileUri.AbsolutePath, ModuleRefStr);
             var response = await handler.Handle(@params, default);
 
             response.Should().NotBeNull();
@@ -253,11 +253,28 @@ namespace Bicep.LangServer.UnitTests.Handlers
 
             var handler = new BicepExternalSourceRequestHandler(dispatcher.Object, resolver.Object);
 
-            var @params = new BicepRegistryCacheParams(fileUri.AbsolutePath, ModuleRefStr);
+            var @params = new BicepExternalSourceParams(fileUri.AbsolutePath, ModuleRefStr);
             var response = await handler.Handle(@params, default);
 
             response.Should().NotBeNull();
             response.Content.Should().Be(bicepSource);
+        }
+
+        //asdfg: repo with path (/ -> $)
+        [TestMethod]
+        public void GetExternalSourceLinkUri_asdfg()
+        {
+            string localCachedJsonPath = "/.bicep/br/myregistry.azurecr.io/bicep$myrepo/v1$/main.json";
+            Uri entrypointUri = new("/my entrypoint.bicep", UriKind.Absolute);
+            OciArtifactReference reference = new(ArtifactType.Module, "myregistry", "repo", "tag", null, new Uri("/parent.bicep", UriKind.Absolute));
+
+            var sourceArchive = SourceArchive.FromStream(SourceArchive.PackSourcesIntoStream(
+                entrypointUri,
+                new Core.Workspaces.ISourceFile[] {
+                    SourceFileFactory.CreateBicepFile(entrypointUri, "metadata description = 'bicep module'")
+                }));
+
+            var result = BicepExternalSourceRequestHandler.GetExternalSourceLinkUri(localCachedJsonPath, reference, sourceArchive);
         }
     }
 }

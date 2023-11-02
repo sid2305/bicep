@@ -71,7 +71,7 @@ export class BicepExternalSourceContentProvider
   private decodeExternalSourceUri(uri: vscode.Uri): ExternalSource {
     //asdfg test
     // The uri passed in has this format:
-    //   bicep-extsrc://{title}#{module-reference}#{local-cache-file-path}
+    //   bicep-extsrc:{title}#{module-reference}#{local-cache-file-path}
     const title = decodeURIComponent(uri.path);
     const hashIndex = uri.fragment.indexOf("#");
     const moduleReference = decodeURIComponent(

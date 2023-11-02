@@ -2,23 +2,30 @@
 // Licensed under the MIT License.
 
 using System;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using Bicep.Core.Diagnostics;
 using Bicep.Core.Features;
 using Bicep.Core.FileSystem;
 using Bicep.Core.Registry;
+using Bicep.Core.Registry.Oci;
 using Bicep.Core.SourceCode;
+using Bicep.Core.Workspaces;
 using MediatR;
+using Newtonsoft.Json.Linq;
 using OmniSharp.Extensions.JsonRpc;
 using OmniSharp.Extensions.LanguageServer.Protocol;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
+using OmniSharp.Extensions.LanguageServer.Protocol.Server;
 
 namespace Bicep.LanguageServer.Handlers
 {
     [Method(BicepExternalSourceRequestHandler.BicepExternalSourceLspMethodName, Direction.ClientToServer)]
-    public record BicepRegistryCacheParams(
+    public record BicepExternalSourceParams(
         TextDocumentIdentifier TextDocument, // The bicep file which contains a reference to the target module
         string Target                        // The module reference to display sources for
     ) : ITextDocumentIdentifierParams, IRequest<BicepExternalSourceResponse>;
@@ -26,10 +33,10 @@ namespace Bicep.LanguageServer.Handlers
     public record BicepExternalSourceResponse(string Content);
 
     /// <summary>
-    /// Handles textDocument/bicepExternalSource LSP requests. These are sent by clients that are resolving contents of document URIs using the bicep-extsrc:// scheme.
+    /// Handles textDocument/bicepExternalSource LSP requests. These are sent by clients that are resolving contents of document URIs using the bicep-extsrc: scheme.
     /// The BicepDefinitionHandler returns such URIs when definitions are inside modules that reside in the local module cache.
     /// </summary>
-    public class BicepExternalSourceRequestHandler : IJsonRpcRequestHandler<BicepRegistryCacheParams, BicepExternalSourceResponse>
+    public class BicepExternalSourceRequestHandler : IJsonRpcRequestHandler<BicepExternalSourceParams, BicepExternalSourceResponse>
     {
         public const string BicepExternalSourceLspMethodName = "textDocument/bicepExternalSource";
 
@@ -42,7 +49,7 @@ namespace Bicep.LanguageServer.Handlers
             this.fileResolver = fileResolver;
         }
 
-        public Task<BicepExternalSourceResponse> Handle(BicepRegistryCacheParams request, CancellationToken cancellationToken)
+        public Task<BicepExternalSourceResponse> Handle(BicepExternalSourceParams request, CancellationToken cancellationToken)
         {
             // If any of the following paths result in an exception being thrown (and surfaced client-side to the user),
             // it indicates a code defect client or server-side.
@@ -87,6 +94,53 @@ namespace Bicep.LanguageServer.Handlers
             }
 
             return Task.FromResult(new BicepExternalSourceResponse(contents));
+        }
+
+        /// <summary>
+        /// Creates a bicep-extsrc: URI for a given module's source file to give to the client to use as a document URI.  (Client should then
+        ///   respond with a textDocument/externalSource request).
+        /// </summary>
+        /// <param name="localCachedJsonPath">The path to the local cached main.json file</param>
+        /// <param name="reference">The module reference</param>
+        /// <param name="sourceArchive">The source archive for the module, if sources are available</param>
+        /// <returns>A bicep-extsrc: URI</returns>
+        public static Uri GetExternalSourceLinkUri(string localCachedJsonPath, OciArtifactReference reference, SourceArchive? sourceArchive)
+        {
+            Debug.Assert(Path.GetFileName(localCachedJsonPath).Equals("main.json", StringComparison.InvariantCulture), "A compiled module entrypoint should always be main.json");
+
+            var sourceFilePath = localCachedJsonPath;
+            var entrypointFilename = Path.GetFileName(sourceFilePath);
+
+            if (sourceArchive is { })
+            {
+                // We have Bicep source code available.
+                // Replace the local cached JSON name (always main.json) with the actual source entrypoint filename (e.g.
+                //   myentrypoint.bicep) so clients know to request the bicep instead of json, and so they know to use the
+                //   bicep language server to display the code.
+                //   e.g. "path/main.json" -> "path/myentrypoint.bicep"
+                // The "path/myentrypoint.bicep" path is virtual (doesn't actually exist).
+                entrypointFilename = Path.GetFileName(sourceArchive.EntrypointPath);
+                sourceFilePath = Path.Join(Path.GetDirectoryName(sourceFilePath), entrypointFilename);
+            }
+
+            // The file path and fully qualified reference may contain special characters (like :) that need to be url-encoded.
+            sourceFilePath = WebUtility.UrlEncode(sourceFilePath);
+            var fullyQualifiedReference = WebUtility.UrlEncode(reference.FullyQualifiedReference);
+            var version = reference.Tag ?? reference.Digest;
+            //var display = $"{reference.Scheme}:{reference.Registry}/{reference.Repository}/{entrypointFilename} ({reference.Tag ?? reference.Digest})";
+            var display = $"{reference.Scheme}:{reference.Registry}/{reference.Repository}/{version}/{entrypointFilename} ({Path.GetFileName(reference.Repository)}:{version})";
+
+            // Encode the source file path as a path and the fully qualified reference as a fragment.
+            // VsCode will pass it to our language client, which will respond by requesting the source to display via
+            //   a textDocument/bicepExternalSource request (see BicepExternalSourceHandler)
+            // Example:
+            //
+            //   source available (unencoded version):
+            //     bicep-extsrc:br:myregistry.azurecr.io/myrepo:main.bicep (v1)#br:myregistry.azurecr.io/myrepo:v1#/Users/MyUserName/.bicep/br/registry.azurecr.io/myrepo/v1$/main.bicep
+            //
+            //   source not available (unencoded version):
+            //     bicep-extsrc:br:myregistry.azurecr.io/myrepo:main.json (v1)#br:myregistry.azurecr.io/myrepo:v1#/Users/MyUserName/.bicep/br/registry.azurecr.io/myrepo/v1$/main.json
+            return new Uri($"bicep-extsrc:{display}#{fullyQualifiedReference}#{sourceFilePath}");
         }
     }
 }
