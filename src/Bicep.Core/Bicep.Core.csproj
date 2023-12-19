@@ -47,6 +47,7 @@
     <PackageReference Include="System.Text.Json" Version="8.0.0" />
     <PackageReference Include="Azure.Bicep.Internal.RoslynAnalyzers" Version="0.1.32" PrivateAssets="all" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
+    <PackageReference Include="NuGet.Versioning" Version="6.8.0" />
   </ItemGroup>
   <ItemGroup>
     <Compile Update="CoreResources.Designer.cs">
