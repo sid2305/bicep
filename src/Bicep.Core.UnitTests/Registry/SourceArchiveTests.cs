@@ -147,7 +147,7 @@ public class SourceArchiveTests
         using var stream = SourceArchive.PackSourcesIntoStream(mainBicep.FileUri, mainBicep, mainJson, standaloneJson, templateSpecMainJson, localModuleJson);
         stream.Length.Should().BeGreaterThan(0);
 
-        SourceArchive sourceArchive = SourceArchive.FromStream(stream);
+        SourceArchive sourceArchive = SourceArchive.UnpackSourcesFromStream(stream);
         sourceArchive.EntrypointRelativePath.Should().Be("main.bicep");
 
 
@@ -210,7 +210,7 @@ public class SourceArchiveTests
 
         using var stream = SourceArchive.PackSourcesIntoStream(mainBicep.FileUri, mainBicep, testFile);
 
-        SourceArchive sourceArchive = SourceArchive.FromStream(stream);
+        SourceArchive sourceArchive = SourceArchive.UnpackSourcesFromStream(stream);
 
         sourceArchive.EntrypointRelativePath.Should().Be("my main.bicep");
 
@@ -246,7 +246,7 @@ public class SourceArchiveTests
             )
         );
 
-        var sut = SourceArchive.FromStream(zip);
+        var sut = SourceArchive.UnpackSourcesFromStream(zip);
         var file = sut.SourceFiles.Single();
 
         file.Kind.Should().Be("bicep");
@@ -280,7 +280,7 @@ public class SourceArchiveTests
             )
         );
 
-        var sut = SourceArchive.FromStream(zip);
+        var sut = SourceArchive.UnpackSourcesFromStream(zip);
         var file = sut.SourceFiles.Single();
 
         file.Kind.Should().Be("bicep");
@@ -318,7 +318,7 @@ public class SourceArchiveTests
             )
         );
 
-        var sut = SourceArchive.FromStream(zip);
+        var sut = SourceArchive.UnpackSourcesFromStream(zip);
         var file = sut.SourceFiles.Single();
 
         file.Kind.Should().Be("bicep");

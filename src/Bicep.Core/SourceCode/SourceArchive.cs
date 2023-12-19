@@ -24,7 +24,7 @@ using static Bicep.Core.SourceCode.SourceArchive;
 namespace Bicep.Core.SourceCode
 {
     // Contains the individual source code files for a Bicep file and all of its dependencies.
-    public partial class SourceArchive
+    public partial class SourceArchive // Partial required for serialization
     {
         public ImmutableArray<SourceFileInfo> SourceFiles { get; init; }
         public string EntrypointRelativePath { get; init; }
@@ -37,8 +37,8 @@ namespace Bicep.Core.SourceCode
 
         private bool isDisposed = false;//asfdg remove
 
-        // WARNING: Only change this value if there is a breaking change such that old versions of Bicep should fail on reading this source archive
-        private const int CurrentMetadataVersion = 0; // TODO: Change to 1 when remove experimental flag
+        // Minimum required Bicep version that will understand this version of the metadata file.  Only update this when breaking changes occur.
+        private const string CurrentMinimumBicepVersionRequired = "0.24.61";
 
         public partial record SourceFileInfo(
             string Path,        // the location, relative to the main.bicep file's folder, for the file that will be shown to the end user (required in all Bicep versions)
@@ -53,7 +53,7 @@ namespace Bicep.Core.SourceCode
 
         [JsonSerializable(typeof(MetadataEntry))]
         private record MetadataEntry(
-            int MetadataVersion,
+            string minimumRequiredBicepVersion,
             string EntryPoint, // Path of the entrypoint file
             IEnumerable<SourceFileInfoEntry> SourceFiles
         );
@@ -62,14 +62,21 @@ namespace Bicep.Core.SourceCode
         private partial record SourceFileInfoEntry(
             // IF ADDING TO THIS: Remember both forwards and backwards compatibility.
             // E.g., previous versions must be able to deal with unrecognized source kinds.
-            // (but see CurrentMetadataVersion for breaking changes)
+            // (but see MinimumBicepVersionToReadMetadata for breaking changes)
             string Path,        // the location, relative to the main.bicep file's folder, for the file that will be shown to the end user (required in all Bicep versions)
             string ArchivePath, // the location (relative to root) of where the file is stored in the archive
             string Kind         // kind of source
         );
 
-        public static SourceArchive FromStream(Stream stream)
+        public static SourceArchive UnpackSourcesFromStream(Stream stream)
         {
+            var versionSplit = ThisAssembly.AssemblyInformationalVersion.Split('+');
+
+            // <major>.<minor>.<patch> (<commmithash>)
+            var a = $"{versionSplit[0]} ({(versionSplit.Length > 1 ? versionSplit[1] : "custom")})";
+            var b = a;
+            a = b;
+
             return new SourceArchive(stream);
         }
 
@@ -189,7 +196,7 @@ namespace Bicep.Core.SourceCode
         private static string CreateMetadataFileContents(string entrypointPath, IEnumerable<SourceFileInfoEntry> files)
         {
             // Add the __metadata.json file
-            var metadata = new MetadataEntry(CurrentMetadataVersion, entrypointPath, files);
+            var metadata = new MetadataEntry(CurrentMinimumBicepVersionRequired, entrypointPath, files);
             return JsonSerializer.Serialize(metadata, MetadataSerializationContext.Default.MetadataEntry);
         }
 

@@ -249,7 +249,7 @@ namespace Bicep.LangServer.UnitTests.Handlers
 
             var bicepSource = "metadata hi = 'This is the bicep source file'";
             var bicepUri = new Uri("file:///foo/bar/entrypoint.bicep");
-            var sourceArchive = SourceArchive.FromStream(SourceArchive.PackSourcesIntoStream(bicepUri, new Core.Workspaces.ISourceFile[] {
+            var sourceArchive = SourceArchive.UnpackSourcesFromStream(SourceArchive.PackSourcesIntoStream(bicepUri, new Core.Workspaces.ISourceFile[] {
                 SourceFileFactory.CreateBicepFile(bicepUri, bicepSource)}));
             dispatcher.Setup(m => m.TryGetModuleSources(moduleReference!)).Returns(sourceArchive);
 
@@ -291,7 +291,7 @@ namespace Bicep.LangServer.UnitTests.Handlers
 
             var bicepSource = "metadata hi = 'This is the bicep source file'";
             var bicepUri = new Uri("file:///foo/bar/entrypoint.bicep");
-            var sourceArchive = SourceArchive.FromStream(SourceArchive.PackSourcesIntoStream(bicepUri, new Core.Workspaces.ISourceFile[] {
+            var sourceArchive = SourceArchive.UnpackSourcesFromStream(SourceArchive.PackSourcesIntoStream(bicepUri, new Core.Workspaces.ISourceFile[] {
                 SourceFileFactory.CreateBicepFile(bicepUri, bicepSource)}));
             dispatcher.Setup(m => m.TryGetModuleSources(moduleReference!)).Returns(sourceArchive);
 
@@ -397,7 +397,7 @@ namespace Bicep.LangServer.UnitTests.Handlers
                 new Uri("file:///parent.bicep", UriKind.Absolute));
 
             var sourceArchive = entrypointUri is { } ?
-                SourceArchive.FromStream(SourceArchive.PackSourcesIntoStream(
+                SourceArchive.UnpackSourcesFromStream(SourceArchive.PackSourcesIntoStream(
                     entrypointUri,
                     new Core.Workspaces.ISourceFile[] {
                         SourceFileFactory.CreateBicepFile(entrypointUri, "metadata description = 'bicep module'")
