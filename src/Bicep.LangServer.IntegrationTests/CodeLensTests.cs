@@ -186,7 +186,7 @@ namespace Bicep.LangServer.IntegrationTests
             var lens = lenses.First();
             lens.Should().HaveRange(new Range(0, 0, 0, 0));
             lens.Should().HaveCommandName("bicep.internal.showModuleSourceFile");
-            lens.Should().HaveCommandTitle("Show Bicep source");
+            lens.Should().HaveCommandTitle("Show Bicep source (experimental)");
             var target = new ExternalSourceReference(lens.CommandArguments().Single());
             target.IsRequestingCompiledJson.Should().BeFalse();
             target.RequestedFile.Should().Be(Path.GetFileName(moduleEntrypointUri.Path));
