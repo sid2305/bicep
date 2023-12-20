@@ -85,7 +85,7 @@ public record CachedModule(
 
     public bool HasSourceLayer => LayerMediaTypes.Contains("application/vnd.ms.bicep.module.source.v1.tar+gzip");
 
-    public SourceArchive? TryGetSource()
+    public SourceArchiveResult TryGetSource()
     {
         var sourceArchivePath = Path.Combine(ModuleCacheFolder, $"source.tar.gz");
         if (File.Exists(sourceArchivePath))
@@ -93,6 +93,6 @@ public record CachedModule(
             return SourceArchive.UnpackSourcesFromStream(File.OpenRead(sourceArchivePath));
         }
 
-        return null;
+        return new();
     }
 }

@@ -132,7 +132,7 @@ public class SourceArchiveTests
     }
 
     [TestMethod]
-    public void CanPackAndUnpackSourceFiles()
+    public void CanPackAndUnpackSourceFiles() //asdfg not available
     {
         Uri projectFolder = new("file:///my project/my sources/", UriKind.Absolute);
         var fs = new MockFileSystem();
@@ -147,8 +147,9 @@ public class SourceArchiveTests
         using var stream = SourceArchive.PackSourcesIntoStream(mainBicep.FileUri, mainBicep, mainJson, standaloneJson, templateSpecMainJson, localModuleJson);
         stream.Length.Should().BeGreaterThan(0);
 
-        SourceArchive sourceArchive = SourceArchive.UnpackSourcesFromStream(stream);
-        sourceArchive.EntrypointRelativePath.Should().Be("main.bicep");
+        SourceArchive? sourceArchive = SourceArchive.UnpackSourcesFromStream(stream).SourceArchive;
+        sourceArchive.Should().NotBeNull();
+        sourceArchive!.EntrypointRelativePath.Should().Be("main.bicep");
 
 
         var archivedFiles = sourceArchive.SourceFiles.ToArray();
@@ -210,9 +211,10 @@ public class SourceArchiveTests
 
         using var stream = SourceArchive.PackSourcesIntoStream(mainBicep.FileUri, mainBicep, testFile);
 
-        SourceArchive sourceArchive = SourceArchive.UnpackSourcesFromStream(stream);
+        SourceArchive? sourceArchive = SourceArchive.UnpackSourcesFromStream(stream).SourceArchive;
 
-        sourceArchive.EntrypointRelativePath.Should().Be("my main.bicep");
+        sourceArchive.Should().NotBeNull();
+        sourceArchive!.EntrypointRelativePath.Should().Be("my main.bicep");
 
         var archivedTestFile = sourceArchive.SourceFiles.Single(f => f.Path != "my main.bicep");
         archivedTestFile.Path.Should().Be(expecteArchivedUri);
@@ -246,7 +248,7 @@ public class SourceArchiveTests
             )
         );
 
-        var sut = SourceArchive.UnpackSourcesFromStream(zip);
+        var sut = SourceArchive.UnpackSourcesFromStream(zip).SourceArchive!;
         var file = sut.SourceFiles.Single();
 
         file.Kind.Should().Be("bicep");
@@ -280,7 +282,7 @@ public class SourceArchiveTests
             )
         );
 
-        var sut = SourceArchive.UnpackSourcesFromStream(zip);
+        var sut = SourceArchive.UnpackSourcesFromStream(zip).SourceArchive!;
         var file = sut.SourceFiles.Single();
 
         file.Kind.Should().Be("bicep");
@@ -318,7 +320,7 @@ public class SourceArchiveTests
             )
         );
 
-        var sut = SourceArchive.UnpackSourcesFromStream(zip);
+        var sut = SourceArchive.UnpackSourcesFromStream(zip).SourceArchive!;
         var file = sut.SourceFiles.Single();
 
         file.Kind.Should().Be("bicep");

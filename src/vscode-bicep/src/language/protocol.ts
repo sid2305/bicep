@@ -149,6 +149,7 @@ export interface BicepExternalSourceParams {
 
 export interface BicepExternalSourceResponse {
   content: string;
+  message: string | undefined;
 }
 
 export const bicepExternalSourceRequestType = new ProtocolRequestType<

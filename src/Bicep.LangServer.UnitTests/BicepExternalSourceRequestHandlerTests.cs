@@ -168,8 +168,7 @@ namespace Bicep.LangServer.UnitTests.Handlers
             dispatcher.Setup(m => m.GetArtifactRestoreStatus(moduleReference!, out nullBuilder)).Returns(ArtifactRestoreStatus.Succeeded);
             dispatcher.Setup(m => m.TryGetLocalArtifactEntryPointUri(moduleReference!)).Returns(ResultHelper.Create(compiledJsonUri, null));
 
-            SourceArchive? sourceArchive = null;
-            dispatcher.Setup(m => m.TryGetModuleSources(moduleReference!)).Returns(sourceArchive);
+            dispatcher.Setup(m => m.TryGetModuleSources(moduleReference!)).Returns(new SourceArchiveResult());
 
             var resolver = StrictMock.Of<IFileResolver>();
             resolver.Setup(m => m.TryRead(compiledJsonUri)).Returns(ResultHelper.Create((string?)null, readFailureBuilder));
@@ -208,8 +207,7 @@ namespace Bicep.LangServer.UnitTests.Handlers
             dispatcher.Setup(m => m.GetArtifactRestoreStatus(moduleReference!, out nullBuilder)).Returns(ArtifactRestoreStatus.Succeeded);
             dispatcher.Setup(m => m.TryGetLocalArtifactEntryPointUri(moduleReference!)).Returns(ResultHelper.Create(compiledJsonUri, null));
 
-            SourceArchive? sourceArchive = null;
-            dispatcher.Setup(m => m.TryGetModuleSources(moduleReference!)).Returns(sourceArchive);
+            dispatcher.Setup(m => m.TryGetModuleSources(moduleReference!)).Returns(new SourceArchiveResult());
 
             var resolver = StrictMock.Of<IFileResolver>();
             resolver.Setup(m => m.TryRead(compiledJsonUri)).Returns(ResultHelper.Create(compiledJsonContents, nullBuilder));
@@ -396,12 +394,12 @@ namespace Bicep.LangServer.UnitTests.Handlers
                 testData.tagOrDigest[0] == '@' ? testData.tagOrDigest[1..] : null,
                 new Uri("file:///parent.bicep", UriKind.Absolute));
 
-            var sourceArchive = entrypointUri is { } ?
+            SourceArchive? sourceArchive = entrypointUri is { } ?
                 SourceArchive.UnpackSourcesFromStream(SourceArchive.PackSourcesIntoStream(
                     entrypointUri,
                     new Core.Workspaces.ISourceFile[] {
                         SourceFileFactory.CreateBicepFile(entrypointUri, "metadata description = 'bicep module'")
-                    }))
+                    })).SourceArchive
                 : null;
 
             return BicepExternalSourceRequestHandler.GetExternalSourceLinkUri(reference, sourceArchive);

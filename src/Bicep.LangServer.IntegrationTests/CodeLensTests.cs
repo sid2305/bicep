@@ -52,13 +52,13 @@ namespace Bicep.LangServer.IntegrationTests
         private SharedLanguageHelperManager CreateServer(Uri? bicepModuleEntrypoint, string? entrypointSource)
         {
             var moduleRegistry = StrictMock.Of<IArtifactRegistry>();
-            SourceArchive? sourceArchive = null;
+            SourceArchiveResult sourceArchiveResult = new();
             if (bicepModuleEntrypoint is not null && entrypointSource is not null)
             {
                 BicepFile moduleEntrypointFile = SourceFileFactory.CreateBicepFile(bicepModuleEntrypoint, entrypointSource);
-                sourceArchive = SourceArchive.FromStream(SourceArchive.PackSourcesIntoStream(moduleEntrypointFile.FileUri, moduleEntrypointFile));
+                sourceArchiveResult = SourceArchive.UnpackSourcesFromStream(SourceArchive.PackSourcesIntoStream(moduleEntrypointFile.FileUri, moduleEntrypointFile));
             }
-            moduleRegistry.Setup(m => m.TryGetSource(It.IsAny<ArtifactReference>())).Returns(sourceArchive);
+            moduleRegistry.Setup(m => m.TryGetSource(It.IsAny<ArtifactReference>())).Returns(sourceArchiveResult);
 
             var moduleDispatcher = StrictMock.Of<IModuleDispatcher>();
             moduleDispatcher.Setup(x => x.RestoreModules(It.IsAny<ImmutableArray<ArtifactReference>>(), It.IsAny<bool>())).
@@ -71,7 +71,7 @@ namespace Bicep.LangServer.IntegrationTests
             var artifactRegistries = moduleRegistry.Object.AsArray();
 
             moduleDispatcher.Setup(m => m.TryGetModuleSources(It.IsAny<ArtifactReference>())).Returns((ArtifactReference reference) =>
-                artifactRegistries.Select(r => r.TryGetSource(reference)).FirstOrDefault(s => s is not null));
+                artifactRegistries.Select(r => r.TryGetSource(reference)).FirstOrDefault(s => s is not null) ?? new());
 
             var defaultServer = new SharedLanguageHelperManager();
             defaultServer.Initialize(

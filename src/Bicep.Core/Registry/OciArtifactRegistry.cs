@@ -504,7 +504,7 @@ namespace Bicep.Core.Registry
             return Path.Combine(this.GetArtifactDirectoryPath(reference), fileName);
         }
 
-        public override SourceArchive? TryGetSource(OciArtifactReference reference)
+        public override SourceArchiveResult TryGetSource(OciArtifactReference reference)
         {
             var zipPath = GetArtifactFilePath(reference, ArtifactFileType.Source);
             if (File.Exists(zipPath))
@@ -512,7 +512,8 @@ namespace Bicep.Core.Registry
                 return SourceArchive.UnpackSourcesFromStream(File.OpenRead(zipPath));
             }
 
-            return null;
+            // No sources available (presumably they weren't published)
+            return new();
         }
 
         private enum ArtifactFileType

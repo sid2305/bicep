@@ -72,9 +72,10 @@ namespace Bicep.LanguageServer.Handlers
                     $"Unable to obtain the entry point URI for module '{moduleReference.FullyQualifiedReference}'.");
             }
 
-            if (moduleDispatcher.TryGetModuleSources(moduleReference) is SourceArchive sourceArchive && request.requestedSourceFile is { })
+            SourceArchiveResult sourceArchiveResult = moduleDispatcher.TryGetModuleSources(moduleReference);
+            if (sourceArchiveResult.SourceArchive is { } && request.requestedSourceFile is { })
             {
-                var requestedFile = sourceArchive.SourceFiles.FirstOrDefault(f => f.Path == request.requestedSourceFile);
+                var requestedFile = sourceArchiveResult.SourceArchive.SourceFiles.FirstOrDefault(f => f.Path == request.requestedSourceFile);
                 if (requestedFile is null)
                 {
                     throw new InvalidOperationException($"Could not find source file \"{request.requestedSourceFile}\" in the sources for module \"{moduleReference.FullyQualifiedReference}\"");
@@ -82,8 +83,12 @@ namespace Bicep.LanguageServer.Handlers
 
                 return Task.FromResult(new BicepExternalSourceResponse(requestedFile.Contents));
             }
+            else if (sourceArchiveResult?.Message is { })
+            {
+                return Task.FromResult(new BicepExternalSourceResponse(sourceArchiveResult.Message));
+            }
 
-            // No sources available, or specifically requesting the compiled main.json.
+            // No sources available, or specifically requesting the compiled main.json, or there was an error retrieving sources.
             // Retrieve the JSON source
             if (!this.fileResolver.TryRead(compiledJsonUri).IsSuccess(out var contents, out var failureBuilder))
             {
