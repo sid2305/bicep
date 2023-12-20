@@ -69,10 +69,10 @@ namespace Bicep.Core.SourceCode
         public const string SourceKind_ArmTemplate = "armTemplate";
         public const string SourceKind_TemplateSpec = "templateSpec";
 
-        private const string MetadataArchivedFileName = "__metadata.json";
+        private const string MetadataFileName = "__metadata.json";
 
         // Minimum required Bicep version that will be written into new source archives.  Only update this when breaking changes occur.
-        private const string CurrentMinimumBicepVersionRequired = "0.24.61";
+        private const string CurrentMinimumBicepVersionRequired = "0.24.66";
 
         public partial record SourceFileInfo(
             string Path,        // the location, relative to the main.bicep file's folder, for the file that will be shown to the end user (required in all Bicep versions)
@@ -105,9 +105,9 @@ namespace Bicep.Core.SourceCode
 
         private string? GetRequiredBicepVersionMessage()
         {
-            if (MinimumBicepVersionRequired is null)
+            if (MinimumBicepVersionRequired is null || CreatedWithBicepVersion is null)
             {
-                return $"// This source code was published with an older version of Bicep. It needs to be republished with a newer version.";
+                return $"// This source code was published with an older version of Bicep ({CreatedWithBicepVersion}). It needs to be republished with a newer version.";
             }
 
             if (!Versioning.IsCurrentBicepVersionAtLeast(this.MinimumBicepVersionRequired))
@@ -191,7 +191,7 @@ namespace Bicep.Core.SourceCode
 
                     // Add the metadata file
                     var metadataContents = CreateMetadataFileContents(entryPointPath, filesMetadata);
-                    WriteNewFileEntry(tarWriter, MetadataArchivedFileName, metadataContents);
+                    WriteNewFileEntry(tarWriter, MetadataFileName, metadataContents);
                 }
             }
 
@@ -227,7 +227,7 @@ namespace Bicep.Core.SourceCode
 
             var dictionary = filesBuilder.ToImmutableDictionary();
 
-            var metadataJson = dictionary[MetadataArchivedFileName]
+            var metadataJson = dictionary[MetadataFileName]
                 ?? throw new BicepException("Incorrectly formatted source file: No {MetadataArchivedFileName} entry");
             var metadata = JsonSerializer.Deserialize<ArchiveMetadata>(metadataJson, MetadataSerializationContext.Default.ArchiveMetadata)
                 ?? throw new BicepException("Source archive has invalid metadata entry");

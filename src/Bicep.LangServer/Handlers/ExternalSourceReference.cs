@@ -86,6 +86,10 @@ namespace Bicep.LanguageServer.Handlers
             {
                 // We have Bicep source code available
                 RequestedFile = sourceArchive.EntrypointRelativePath;
+
+                // TODO: Remove this line when removing experimental flag for module source publishing. When it's experimental, we will show the JSON first
+                //   and require users to click "Show Bicep (experimental)" before viewing Bicep, so they know that it's still experimental.
+                RequestedFile = null;
             }
             else
             {
