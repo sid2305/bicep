@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+using System.Linq;
 using Bicep.Core.Analyzers.Linter.Rules;
 using Bicep.Core.Diagnostics;
 using Bicep.Core.UnitTests.Assertions;
@@ -403,6 +404,29 @@ namespace Bicep.Core.UnitTests.Diagnostics.LinterRuleTests
             );
 
             result.Diagnostics.Should().NotHaveAnyDiagnostics();
+        }
+
+        [TestMethod]
+        public void asdfg()
+        {
+            var result = CompilationHelper.Compile(
+                ("main.bicep", @"
+                    module m3 'module1.bicep' = {
+                      name: 'name'
+                    }
+                "),
+                ("module1.bicep", @"
+                    param location string = 'resourceGroup().location' // *not* a location-related param
+                    output o string = location
+                   ")
+            );
+
+            var modules = result.Compilation.GetEntrypointSemanticModel().Root.Declarations.Where(d => d.Type.TypeKind == Core.TypeSystem.TypeKind.Module);
+            
+
+            var model = result.Compilation.GetEntrypointSemanticModel();
+            var model2 = model;
+            model = model2;
         }
     }
 }
