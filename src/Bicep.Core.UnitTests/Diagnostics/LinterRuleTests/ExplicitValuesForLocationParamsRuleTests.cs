@@ -1,9 +1,13 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+using System.Diagnostics;
 using System.Linq;
 using Bicep.Core.Analyzers.Linter.Rules;
 using Bicep.Core.Diagnostics;
+using Bicep.Core.Semantics;
+using Bicep.Core.Syntax;
+using Bicep.Core.TypeSystem.Types;
 using Bicep.Core.UnitTests.Assertions;
 using Bicep.Core.UnitTests.Utils;
 using FluentAssertions;
@@ -421,12 +425,67 @@ namespace Bicep.Core.UnitTests.Diagnostics.LinterRuleTests
                    ")
             );
 
-            var modules = result.Compilation.GetEntrypointSemanticModel().Root.Declarations.Where(d => d.Type.TypeKind == Core.TypeSystem.TypeKind.Module);
-            
+            var moduleSymbols = result.Compilation.GetEntrypointSemanticModel().Root.Declarations.OfType<ModuleSymbol>();
+            foreach (var moduleSymbol in moduleSymbols)
+            {
+                if (moduleSymbol.DeclaringSyntax is ModuleDeclarationSyntax syntax)
+                {
+                    var span = syntax.Path.Span;
+                    Trace.WriteLine(span);
+
+                    if (moduleSymbol.Type is ModuleType type)
+                    {
+                        var body = type.Body;
+                        var b = body;
+                        body = b;
+                    }
+
+                    if (moduleSymbol.TryGetModuleType() is ModuleType moduleType)
+                    {
+                        var a = moduleType;
+                        var b = a;
+                        a = b;
+                    }
+
+                    var aa = result.Compilation.SourceFileGrouping.TryGetSourceFile(syntax);
+                    var bb = aa;
+                    aa = bb;
+                }
+            }
 
             var model = result.Compilation.GetEntrypointSemanticModel();
             var model2 = model;
             model = model2;
+        }
+
+        [TestMethod]
+        public void Asdfg2()
+        {
+            var result = CompilationHelper.Compile(
+                ("main.bicep", @"
+                    targetScope = 'subscription'
+
+                    param location string
+
+                    module m1 'module1.bicep' = {
+                      name: 'm1'
+                      params: {
+                      }
+                    }
+
+                    output o string = location
+                    "),
+                ("module1.bicep", @"
+                    targetScope = 'subscription'
+                    param myParam string = deployment().location
+                    output o string = myParam
+                   ")
+            );
+            result.Diagnostics.Should().HaveDiagnostics(new[]
+            {
+                (ExplicitValuesForLocationParamsRule.Code, DiagnosticLevel.Warning, "Parameter 'myParam' of module 'm1' isn't assigned an explicit value, and its default value may not give the intended behavior for a location-related parameter. You should assign an explicit value to the parameter."),
+
+            });
         }
     }
 }

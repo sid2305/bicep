@@ -179,6 +179,9 @@ namespace Bicep.Core.Samples
 
             using Stream? sourcesStream = publishSource ? SourceArchive.PackSourcesIntoStream(result.Compilation.SourceFileGrouping) : null;
 
+            //asdfgasdfg
+            var a = result.Compilation.GetEntrypointSemanticModel().Root.
+
             await dispatcher.PublishModule(targetReference, stream, sourcesStream, documentationUri);
         }
 
