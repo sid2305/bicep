@@ -415,8 +415,11 @@ namespace Bicep.Core.UnitTests.Diagnostics.LinterRuleTests
         {
             var result = CompilationHelper.Compile(
                 ("main.bicep", @"
-                    module m3 'module1.bicep' = {
-                      name: 'name'
+                    module m1 'module1.bicep' = {
+                      name: 'name1'
+                    }
+                    module m2 'abc/../module1.bicep' = {
+                      name: 'name2'
                     }
                 "),
                 ("module1.bicep", @"
@@ -433,23 +436,28 @@ namespace Bicep.Core.UnitTests.Diagnostics.LinterRuleTests
                     var span = syntax.Path.Span;
                     Trace.WriteLine(span);
 
-                    if (moduleSymbol.Type is ModuleType type)
-                    {
-                        var body = type.Body;
-                        var b = body;
-                        body = b;
-                    }
+                    //if (moduleSymbol.Type is ModuleType type)
+                    //{
+                    //    var body = type.Body;
+                    //    var b = body;
+                    //    body = b;
+                    //}
 
-                    if (moduleSymbol.TryGetModuleType() is ModuleType moduleType)
-                    {
-                        var a = moduleType;
-                        var b = a;
-                        a = b;
-                    }
+                    //if (moduleSymbol.TryGetModuleType() is ModuleType moduleType)
+                    //{
+                    //    var a = moduleType;
+                    //    var b = a;
+                    //    a = b;
+                    //}
 
                     var aa = result.Compilation.SourceFileGrouping.TryGetSourceFile(syntax);
                     var bb = aa;
                     aa = bb;
+
+                    var aaa = result.Compilation.SourceFileGrouping.FileUriResultByArtifactReference.First().Value.First().Key;
+                    var bbb = result.Compilation.SourceFileGrouping.FileUriResultByArtifactReference.First().Value.Skip(1).First().Key;
+                    Trace.WriteLine(aaa.Path?.Span);
+                    Trace.WriteLine(bbb.Path?.Span);
                 }
             }
 
