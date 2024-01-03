@@ -1,15 +1,22 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+using System;
+using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
 using Bicep.Core.Analyzers.Linter.Rules;
 using Bicep.Core.Diagnostics;
+using Bicep.Core.Extensions;
+using Bicep.Core.Navigation;
 using Bicep.Core.Semantics;
 using Bicep.Core.Syntax;
 using Bicep.Core.TypeSystem.Types;
 using Bicep.Core.UnitTests.Assertions;
 using Bicep.Core.UnitTests.Utils;
+using Bicep.Core.Utils;
+using Bicep.Core.Workspaces;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -415,55 +422,87 @@ namespace Bicep.Core.UnitTests.Diagnostics.LinterRuleTests
         {
             var result = CompilationHelper.Compile(
                 ("main.bicep", @"
-                    module m1 'module1.bicep' = {
-                      name: 'name1'
+                    module m1a 'module1.bicep' = {
+                      name: 'name1a'
                     }
-                    module m2 'abc/../module1.bicep' = {
+                    module m2 'abc/../module2.bicep' = {
                       name: 'name2'
+                    }
+                    module m1b 'abc/../module1.bicep' = {
+                      name: 'name1b'
                     }
                 "),
                 ("module1.bicep", @"
                     param location string = 'resourceGroup().location' // *not* a location-related param
                     output o string = location
+                    module m2 'abc/../module2.bicep' = {
+                      name: 'name2'
+                    }
+                   "),
+                ("module2.bicep", @"
+                    param location string = 'resourceGroup().location' // *not* a location-related param
+                    output o string = location
                    ")
             );
 
-            var moduleSymbols = result.Compilation.GetEntrypointSemanticModel().Root.Declarations.OfType<ModuleSymbol>();
-            foreach (var moduleSymbol in moduleSymbols)
+            foreach (var sourceAndDictPair in result.Compilation.SourceFileGrouping.FileUriResultByArtifactReference)
             {
-                if (moduleSymbol.DeclaringSyntax is ModuleDeclarationSyntax syntax)
+                ISourceFile referencingFile = sourceAndDictPair.Key;
+                IDictionary<IArtifactReferenceSyntax, Result<Uri, UriResolutionError>> referenceSyntaxeToUri = sourceAndDictPair.Value;
+
+                foreach (var syntaxAndUriPair in referenceSyntaxeToUri)
                 {
-                    var span = syntax.Path.Span;
-                    Trace.WriteLine(span);
-
-                    //if (moduleSymbol.Type is ModuleType type)
-                    //{
-                    //    var body = type.Body;
-                    //    var b = body;
-                    //    body = b;
-                    //}
-
-                    //if (moduleSymbol.TryGetModuleType() is ModuleType moduleType)
-                    //{
-                    //    var a = moduleType;
-                    //    var b = a;
-                    //    a = b;
-                    //}
-
-                    var aa = result.Compilation.SourceFileGrouping.TryGetSourceFile(syntax);
-                    var bb = aa;
-                    aa = bb;
-
-                    var aaa = result.Compilation.SourceFileGrouping.FileUriResultByArtifactReference.First().Value.First().Key;
-                    var bbb = result.Compilation.SourceFileGrouping.FileUriResultByArtifactReference.First().Value.Skip(1).First().Key;
-                    Trace.WriteLine(aaa.Path?.Span);
-                    Trace.WriteLine(bbb.Path?.Span);
+                    IArtifactReferenceSyntax syntax = syntaxAndUriPair.Key;
+                    Result<Uri, UriResolutionError> uriResult = syntaxAndUriPair.Value;
+                    if (syntax.Path is { } && uriResult.IsSuccess(out var uri))
+                    {
+                        Trace.WriteLine($"{referencingFile.FileUri}: {syntax.Path.ToText()} -> {uri}");
+                    }
                 }
+                // Key - syntax
+                // Value - Uri result
+                //var referenceSpans = referenceSyntaxes.Keys.Select(x => x.TryGetPath()).WhereNotNull().Select(x => x.Span);
+                //var a = referenceSpans;
             }
 
-            var model = result.Compilation.GetEntrypointSemanticModel();
-            var model2 = model;
-            model = model2;
+            //    KeyValuePair<ISourceFile, ImmutableDictionary<IArtifactReferenceSyntax, Utils.Result<System.Uri, UriResolutionError>>>
+            //}
+            //var moduleSymbols = result.Compilation.GetEntrypointSemanticModel().Root.Declarations.OfType<ModuleSymbol>();
+            //foreach (var moduleSymbol in moduleSymbols)
+            //{
+            //    if (moduleSymbol.DeclaringSyntax is ModuleDeclarationSyntax syntax)
+            //    {
+            //        var span = syntax.Path.Span;
+            //        Trace.WriteLine(span);
+
+            //        //if (moduleSymbol.Type is ModuleType type)
+            //        //{
+            //        //    var body = type.Body;
+            //        //    var b = body;
+            //        //    body = b;
+            //        //}
+
+            //        //if (moduleSymbol.TryGetModuleType() is ModuleType moduleType)
+            //        //{
+            //        //    var a = moduleType;
+            //        //    var b = a;
+            //        //    a = b;
+            //        //}
+
+            //        var aa = result.Compilation.SourceFileGrouping.TryGetSourceFile(syntax);
+            //        var bb = aa;
+            //        aa = bb;
+
+            //        var aaa = result.Compilation.SourceFileGrouping.FileUriResultByArtifactReference.First().Value.First().Key;
+            //        var bbb = result.Compilation.SourceFileGrouping.FileUriResultByArtifactReference.First().Value.Skip(1).First().Key;
+            //        Trace.WriteLine(aaa.Path?.Span);
+            //        Trace.WriteLine(bbb.Path?.Span);
+            //    }
+            //}
+
+            //var model = result.Compilation.GetEntrypointSemanticModel();
+            //var model2 = model;
+            //model = model2;
         }
 
         [TestMethod]
