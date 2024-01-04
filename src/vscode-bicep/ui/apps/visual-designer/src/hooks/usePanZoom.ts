@@ -5,8 +5,8 @@ import { store } from "../store";
 
 export default function usePanZoom<T extends Element = HTMLDivElement>() {
   const containerRef = useRef<T>(null);
-  const translateTo = store.use.translateTo();
-  const scaleTo = store.use.scaleTo();
+  const translateTo = store.use.graph().translateTo;
+  const scaleTo = store.use.graph().scaleTo;
 
   useEffect(() => {
     if (containerRef.current) {

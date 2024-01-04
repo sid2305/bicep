@@ -1,20 +1,31 @@
 import styled from "styled-components";
 import useDrag from "../hooks/useDrag";
-import { NodeModel } from "../store/types";
-import { Dimension, Position } from "../core/types";
 
-const $Node = styled.div.attrs<{
-  $zIndex: number;
-  $position: Position;
-  $dimension: Dimension;
-}>(({ $zIndex, $position, $dimension }) => ({
-  style: {
-    transform: `translate(${$position.x}px, ${$position.y}px)`,
-    zIndex: $zIndex,
-    width: `${$dimension.width}px`,
-    height: `${$dimension.height}px`,
-  },
-}))`
+import type { PropsWithChildren } from "react";
+import type { Transient } from "./types";
+import type { Dimension, Position } from "../core/types";
+
+export type NodeProps = PropsWithChildren<{
+  id: string;
+  zIndex: number;
+  position: Position;
+  dimension: Dimension;
+}>;
+
+type $NodeProps = Transient<
+  Pick<NodeProps, "zIndex" | "position" | "dimension">
+>;
+
+const $Node = styled.div.attrs<$NodeProps>(
+  ({ $zIndex, $position, $dimension }) => ({
+    style: {
+      transform: `translate(${$position.x}px, ${$position.y}px)`,
+      zIndex: $zIndex,
+      width: `${$dimension.width}px`,
+      height: `${$dimension.height}px`,
+    },
+  }),
+)`
   cursor: default;
   display: flex;
   justify-content: center;
@@ -26,7 +37,13 @@ const $Node = styled.div.attrs<{
   border-color: black;
 `;
 
-export default function Node({ id, zIndex, position, dimension }: NodeModel) {
+export function Node({
+  id,
+  zIndex,
+  position,
+  dimension,
+  children,
+}: PropsWithChildren<NodeProps>) {
   const nodeRef = useDrag(id);
 
   return (
@@ -36,7 +53,7 @@ export default function Node({ id, zIndex, position, dimension }: NodeModel) {
       $position={position}
       $dimension={dimension}
     >
-      {id}
+      {children}
     </$Node>
   );
 }

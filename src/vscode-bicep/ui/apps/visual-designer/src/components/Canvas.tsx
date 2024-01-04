@@ -1,9 +1,9 @@
 import { DragEvent } from "react";
-import styled from "styled-components";
-import usePanZoom from "../hooks/usePanZoom";
+import { styled } from "styled-components";
 
-import Graph from "./Graph";
+import { Graph } from "./Graph";
 import { store } from "../store";
+import usePanZoom from "../hooks/usePanZoom";
 
 const $Canvas = styled.div`
   position: absolute;
@@ -18,10 +18,7 @@ let nodeId = 0;
 
 export default function Canvas() {
   const canvasRef = usePanZoom();
-  const nodes = store.use.nodes();
-  const scale = store.use.scale();
-  const position = store.use.position();
-  const addNode = store.use.addNode();
+  const addNode = store.use.graph().addNode;
 
   function handleDragOver(event: DragEvent<HTMLDivElement>) {
     event.preventDefault();
@@ -31,23 +28,9 @@ export default function Canvas() {
     const fullyQualifiedResourceType = event.dataTransfer.getData("text");
 
     addNode(`${fullyQualifiedResourceType}/${nodeId++}`, {
-      // x: event.clientX * scale - position.x,
-      // y: event.clientY * scale - position.y,
-      // x: event.clientX * scale - position.x,
-      // y: event.clientY * scale - position.y,
-      x: (event.clientX - position.x / scale),
-      y: (event.clientY - position.y / scale),
+      x: event.clientX,
+      y: event.clientY,
     });
-
-    console.log("node A", nodes["A"].position);
-    console.log("scale", scale);
-    console.log("position", position);
-    console.log("absolute position", { x: position.x / scale, y: position.y / scale });
-    console.log("new node", event.clientX, event.clientY);
-    console.log(
-      (event.clientX - position.x / scale),
-      (event.clientY - position.y / scale),
-    );
   }
 
   return (

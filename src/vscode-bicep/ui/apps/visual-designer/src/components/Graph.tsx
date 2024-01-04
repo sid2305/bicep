@@ -1,6 +1,7 @@
 import styled from "styled-components";
 
-import Node from "./Node";
+import { Node } from "./Node";
+import { Edge } from "./Edge";
 import { store } from "../store";
 
 const $Graph = styled.div.attrs<{
@@ -13,40 +14,34 @@ const $Graph = styled.div.attrs<{
   },
 }))`
   transform-origin: 0 0;
-  /* position: relative; */
-  height: 100px;
-  width: 100px;
+  height: 0;
+  width: 0;
 `;
 
-export default function Graph() {
-  const { x, y } = store.use.position();
-  const scale = store.use.scale();
-  const nodes = store.use.nodes();
-  const edges = store.use.edges();
-  const dimension = store.use.dimension();
+const $Svg = styled.svg`
+  overflow: visible;
+`;
+
+export function Graph() {
+  const { x, y } = store.use.graph().position;
+  const scale = store.use.graph().scale;
+  const nodes = store.use.graph().nodes;
+  const edges = store.use.graph().edges;
 
   return (
     <$Graph $x={x} $y={y} $scale={scale}>
       {Object.values(nodes).map((node) => (
-        <Node key={node.id} {...node} />
+        <Node key={node.id} {...node}>
+          {node.id}
+        </Node>
       ))}
-      <svg width={dimension.width} height={dimension.height}>
+      <$Svg>
         <g>
           {Object.values(edges).map((edge) => (
-            <line
-              key={edge.id}
-              style={{
-                stroke: "black",
-                strokeWidth: 2,
-              }}
-              x1={edge.sourceIntersection.x}
-              y1={edge.sourceIntersection.y}
-              x2={edge.targetIntersection.x}
-              y2={edge.targetIntersection.y}
-            />
+            <Edge key={edge.id} {...edge} />
           ))}
         </g>
-      </svg>
+      </$Svg>
     </$Graph>
   );
 }

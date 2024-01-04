@@ -5,7 +5,7 @@ import { store } from "../store";
 
 export default function useDrag(nodeId: string) {
   const elementRef = useRef<HTMLDivElement>(null);
-  const moveNode = store.use.moveNode();
+  const moveNode = store.use.graph().moveNode;
 
   useEffect(() => {
     if (elementRef.current) {

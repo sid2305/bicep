@@ -1,6 +1,26 @@
-import { Dimension, Position } from "../core/types";
+import type { Dimension, Position } from "../core/types";
+import type { StateCreator } from "zustand";
 
-export interface NodeModel {
+// type ExcludeUndefined<T> = Exclude<T, undefined>;
+
+// // prettier-ignore
+// export type ExcludeFunctions<T> = {
+//   [K in keyof T as T[K] extends (...args: never[]) => void ? never : K]:
+//     ExcludeUndefined<T[K]> extends Array<infer E>
+//       ? Array<ExcludeFunctions<E>>
+//       : ExcludeUndefined<T[K]> extends object
+//         ? ExcludeFunctions<T[K]>
+//         : T[K];
+// };
+
+export type ImmerStateCreator<T> = StateCreator<
+  AppState,
+  [["zustand/immer", never], never],
+  [],
+  T
+>;
+
+export interface NodeState {
   id: string;
   parentId?: string;
   childIds?: string[];
@@ -10,7 +30,7 @@ export interface NodeModel {
   dimension: Dimension;
 }
 
-export interface EdgeModel {
+export interface EdgeState {
   id: string;
   sourceId: string;
   targetId: string;
@@ -18,27 +38,34 @@ export interface EdgeModel {
   targetIntersection: Position;
 }
 
-export interface GraphModel {
+export interface GraphState {
   position: Position;
   scale: number;
-  dimension: Dimension;
-  nodes: Record<string, NodeModel>;
-  edges: Record<string, EdgeModel>;
-}
+  nodes: Record<string, NodeState>;
+  edges: Record<string, EdgeState>;
 
-export interface GraphActions {
   translateTo: (position: Position) => void;
   scaleTo: (factor: number) => void;
-  
+
   moveNode: (nodeId: string, dx: number, dy: number) => void;
   addNode: (nodeId: string, position: Position) => void;
 }
 
-export type GraphState = GraphModel & GraphActions;
+export interface CanvasState {
+  dimension: Dimension;
+  setDimension: (dimension: Dimension) => void;
+}
 
-export type Getter = () => GraphState;
+export interface AppState {
+  canvas: CanvasState;
+  graph: GraphState;
+}
 
-export type Setter = (
-  updater: (state: GraphState) => void,
-  shouldUpdate?: boolean,
-) => void;
+// export type AppStateWithoutActions = ExcludeFunctions<AppState>;
+
+// export type Getter = () => AppStateWithoutActions;
+
+// export type Setter = (
+//   updater: (state: AppStateWithoutActions) => void,
+//   shouldUpdate?: boolean,
+// ) => void;

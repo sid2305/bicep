@@ -1,16 +1,9 @@
-import type { Dimension, LineSegment, Point } from "./types";
+import type { Arc, LineSegment, Position } from "./types";
 
-export function centerOfBox(topLeft: Point, { width, height }: Dimension): Point {
-  return {
-    x: topLeft.x + width / 2,
-    y: topLeft.y + height / 2,
-  };
-}
-
-export function intersectionOfLineSegments(
+export function intersect(
   [{ x: x1, y: y1 }, { x: x2, y: y2 }]: LineSegment,
   [{ x: x3, y: y3 }, { x: x4, y: y4 }]: LineSegment,
-): Point | undefined {
+): Position | undefined {
   // Check if none of the lines are of length 0
   if ((x1 === x2 && y1 === y2) || (x3 === x4 && y3 === y4)) {
     return undefined;
@@ -26,7 +19,7 @@ export function intersectionOfLineSegments(
   const ua = ((x4 - x3) * (y1 - y3) - (y4 - y3) * (x1 - x3)) / denominator;
   const ub = ((x2 - x1) * (y1 - y3) - (y2 - y1) * (x1 - x3)) / denominator;
 
-  // is the intersection along the segments
+  // is the intersection along the segments?
   if (ua < 0 || ua > 1 || ub < 0 || ub > 1) {
     return undefined;
   }
@@ -36,4 +29,11 @@ export function intersectionOfLineSegments(
   const y = y1 + ua * (y2 - y1);
 
   return { x, y };
+}
+
+export function intersect(
+  [start, end]: LineSegment,
+  arc: Arc,
+) : Position | undefined {
+  
 }
