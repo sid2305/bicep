@@ -88,11 +88,13 @@ namespace Bicep.Core.SourceCode
         [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
         private partial class MetadataSerializationContext : JsonSerializerContext { }
 
+        // Metadata for the entire archive (stored in __metadata.json file in archive)
         [JsonSerializable(typeof(ArchiveMetadata))]
         private record ArchiveMetadata(
             int MetadataVersion, //asdfg test
             string EntryPoint, // Path of the entrypoint file
             IEnumerable<SourceFileInfoEntry> SourceFiles,
+            IImmutableDictionary<string, SourceCodeDocumentLink[]>? DocumentLinks, // Maps source file path -> array of document links
             string BicepVersion = "unknown"
         );
 
@@ -145,7 +147,7 @@ namespace Bicep.Core.SourceCode
         }
 
         // TODO: Toughen this up to handle conflicting paths, ".." paths, etc.
-        public static Stream PackSourcesIntoStream(Uri entrypointFileUri, params ISourceFile[] sourceFiles)
+        public static Stream PackSourcesIntoStream(Uri entrypointFileUri, IDictionary<string, SourceCodeDocumentLink[]>? DocumentLinks, params ISourceFile[] sourceFiles)
         {
             var baseFolderBuilder = new UriBuilder(entrypointFileUri)
             {
