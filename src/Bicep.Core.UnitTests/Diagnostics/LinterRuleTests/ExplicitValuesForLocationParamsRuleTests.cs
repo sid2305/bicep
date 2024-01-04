@@ -418,7 +418,7 @@ namespace Bicep.Core.UnitTests.Diagnostics.LinterRuleTests
         }
 
         [TestMethod]
-        public void asdfg()
+        public void Asdfg()
         {
             var result = CompilationHelper.Compile(
                 ("main.bicep", @"
@@ -459,50 +459,7 @@ namespace Bicep.Core.UnitTests.Diagnostics.LinterRuleTests
                         Trace.WriteLine($"{referencingFile.FileUri}: {syntax.Path.ToText()} -> {uri}");
                     }
                 }
-                // Key - syntax
-                // Value - Uri result
-                //var referenceSpans = referenceSyntaxes.Keys.Select(x => x.TryGetPath()).WhereNotNull().Select(x => x.Span);
-                //var a = referenceSpans;
             }
-
-            //    KeyValuePair<ISourceFile, ImmutableDictionary<IArtifactReferenceSyntax, Utils.Result<System.Uri, UriResolutionError>>>
-            //}
-            //var moduleSymbols = result.Compilation.GetEntrypointSemanticModel().Root.Declarations.OfType<ModuleSymbol>();
-            //foreach (var moduleSymbol in moduleSymbols)
-            //{
-            //    if (moduleSymbol.DeclaringSyntax is ModuleDeclarationSyntax syntax)
-            //    {
-            //        var span = syntax.Path.Span;
-            //        Trace.WriteLine(span);
-
-            //        //if (moduleSymbol.Type is ModuleType type)
-            //        //{
-            //        //    var body = type.Body;
-            //        //    var b = body;
-            //        //    body = b;
-            //        //}
-
-            //        //if (moduleSymbol.TryGetModuleType() is ModuleType moduleType)
-            //        //{
-            //        //    var a = moduleType;
-            //        //    var b = a;
-            //        //    a = b;
-            //        //}
-
-            //        var aa = result.Compilation.SourceFileGrouping.TryGetSourceFile(syntax);
-            //        var bb = aa;
-            //        aa = bb;
-
-            //        var aaa = result.Compilation.SourceFileGrouping.FileUriResultByArtifactReference.First().Value.First().Key;
-            //        var bbb = result.Compilation.SourceFileGrouping.FileUriResultByArtifactReference.First().Value.Skip(1).First().Key;
-            //        Trace.WriteLine(aaa.Path?.Span);
-            //        Trace.WriteLine(bbb.Path?.Span);
-            //    }
-            //}
-
-            //var model = result.Compilation.GetEntrypointSemanticModel();
-            //var model2 = model;
-            //model = model2;
         }
 
         [TestMethod]
