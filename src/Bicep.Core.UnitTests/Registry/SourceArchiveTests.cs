@@ -144,10 +144,10 @@ public class SourceArchiveTests
         var templateSpecMainJson = CreateSourceFile(fs, projectFolder, "Main template.json", SourceArchive.SourceKind_TemplateSpec, TemplateSpecJsonSource);
         var localModuleJson = CreateSourceFile(fs, projectFolder, "localModule.json", SourceArchive.SourceKind_ArmTemplate, LocalModuleDotJsonSource);
 
-        using var stream = SourceArchive.PackSourcesIntoStream(mainBicep.FileUri, mainBicep, mainJson, standaloneJson, templateSpecMainJson, localModuleJson);
+        using var stream = SourceArchive.PackSourcesIntoStream(mainBicep.FileUri, null, mainBicep, mainJson, standaloneJson, templateSpecMainJson, localModuleJson);
         stream.Length.Should().BeGreaterThan(0);
 
-        SourceArchive? sourceArchive = SourceArchive.UnpackFromStream(stream).SourceArchive;
+        SourceArchive? sourceArchive = SourceArchive.TryUnpackFromStream(stream).SourceArchive;
         sourceArchive.Should().NotBeNull();
         sourceArchive!.EntrypointRelativePath.Should().Be("main.bicep");
 
@@ -209,9 +209,9 @@ public class SourceArchiveTests
         var mainBicep = CreateSourceFile(fs, mainBicepFolder, Path.GetFileName(mainBicepPath), SourceArchive.SourceKind_Bicep, MainDotBicepSource);
         var testFile = CreateSourceFile(fs, mainBicepFolder, pathRelativeToMainBicepLocation, SourceArchive.SourceKind_Bicep, SecondaryDotBicepSource);
 
-        using var stream = SourceArchive.PackSourcesIntoStream(mainBicep.FileUri, mainBicep, testFile);
+        using var stream = SourceArchive.PackSourcesIntoStream(mainBicep.FileUri, null, mainBicep, testFile);
 
-        SourceArchive? sourceArchive = SourceArchive.UnpackFromStream(stream).SourceArchive;
+        SourceArchive? sourceArchive = SourceArchive.TryUnpackFromStream(stream).SourceArchive;
 
         sourceArchive.Should().NotBeNull();
         sourceArchive!.EntrypointRelativePath.Should().Be("my main.bicep");
@@ -248,7 +248,7 @@ public class SourceArchiveTests
             )
         );
 
-        var sut = SourceArchive.UnpackFromStream(zip).SourceArchive!;
+        var sut = SourceArchive.TryUnpackFromStream(zip).SourceArchive!;
         var file = sut.SourceFiles.Single();
 
         file.Kind.Should().Be("bicep");
@@ -282,7 +282,7 @@ public class SourceArchiveTests
             )
         );
 
-        var sut = SourceArchive.UnpackFromStream(zip).SourceArchive!;
+        var sut = SourceArchive.TryUnpackFromStream(zip).SourceArchive!;
         var file = sut.SourceFiles.Single();
 
         file.Kind.Should().Be("bicep");
@@ -320,7 +320,7 @@ public class SourceArchiveTests
             )
         );
 
-        var sut = SourceArchive.UnpackFromStream(zip).SourceArchive!;
+        var sut = SourceArchive.TryUnpackFromStream(zip).SourceArchive!;
         var file = sut.SourceFiles.Single();
 
         file.Kind.Should().Be("bicep");

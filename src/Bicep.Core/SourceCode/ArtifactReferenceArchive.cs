@@ -24,38 +24,6 @@ namespace Bicep.Core.SourceCode;
 //    Range TextRange
 //);
 
-public record SourceCodeDocumentLink(
-    //asdfg comments
-
-    /**
-    * Span of the origin of this link.
-    *
-    * Used as the underlined span for mouse interaction. Defaults to the word
-    * range at the mouse position.
-    */
-    TextSpan? originSelectionRange,
-
-    /**
-    * The target resource identifier of this link.
-    */
-    string? targetPath, //asdfg moniker?
-
-    /**
-    * The full target range of this link. If the target for example is a symbol
-    * then target range is the range enclosing this symbol not including
-    * leading/trailing whitespace but everything else like comments. This
-    * information is typically used to highlight the range in the editor.
-    */
-    TextSpan? targetRange,
-
-    /**
-    * The range that should be selected and revealed when this link is being
-    * followed, e.g the name of a function. Must be contained by the
-    * `targetRange`. See also `DocumentSymbol#range`
-    */
-    TextSpan? targetSelectionRange
-);
-
 //public record DocumentLinks(
 //    ImmutableArray<SourceCodeDocumentLink> DocumentLinks
 //);
@@ -104,9 +72,9 @@ public record SourceCodeDocumentLink(
 
 public static class Asdfg
 {
-    public static IImmutableDictionary<string, SourceCodeDocumentLink[]>? GetDocumentLinks(SourceFileGrouping sourceFileGrouping)
+    public static IImmutableDictionary<Uri, SourceCodeDocumentLink[]> GetDocumentLinks(SourceFileGrouping sourceFileGrouping)
     {
-        var dictionary = new Dictionary<string, SourceCodeDocumentLink[]>();
+        var dictionary = new Dictionary<Uri, SourceCodeDocumentLink[]>();
 
         foreach (var sourceAndDictPair in sourceFileGrouping.FileUriResultByArtifactReference)
         {
@@ -124,14 +92,14 @@ public static class Asdfg
                     Trace.WriteLine($"{referencingFile.FileUri}: {syntax.Path.ToText()} -> {uri}");
                     linksForReferencingFile.Add(new SourceCodeDocumentLink(
                         syntax.Path.Span,
-                        uri.LocalPath, //adsfg convert to relative path asdfg test
+                        uri,
                         null, //asdfg target span
                         null //asdfg target selection span
                         ));
                 }
             }
 
-            dictionary.Add(referencingFile.FileUri.LocalPath/*asdfg relative path*/, linksForReferencingFile.ToArray());
+            dictionary.Add(referencingFile.FileUri, linksForReferencingFile.ToArray());
         }
 
         return dictionary.ToImmutableDictionary();

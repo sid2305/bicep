@@ -509,7 +509,7 @@ namespace Bicep.Core.Registry
             var zipPath = GetArtifactFilePath(reference, ArtifactFileType.Source);
             if (File.Exists(zipPath))
             {
-                return SourceArchive.UnpackFromStream(File.OpenRead(zipPath));
+                return SourceArchive.TryUnpackFromStream(File.OpenRead(zipPath));
             }
 
             // No sources available (presumably they weren't published)
