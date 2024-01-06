@@ -90,7 +90,7 @@ public record CachedModule(
         var sourceArchivePath = Path.Combine(ModuleCacheFolder, $"source.tar.gz");
         if (File.Exists(sourceArchivePath))
         {
-            return SourceArchive.UnpackFromStream(File.OpenRead(sourceArchivePath));
+            return SourceArchive.TryUnpackFromStream(File.OpenRead(sourceArchivePath));
         }
 
         return new();

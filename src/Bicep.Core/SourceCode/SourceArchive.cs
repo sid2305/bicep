@@ -16,6 +16,7 @@ using System.Text.Json.Serialization.Metadata;
 using System.Threading.Tasks;
 using Bicep.Core.Exceptions;
 using Bicep.Core.Navigation;
+using Bicep.Core.Parsing;
 using Bicep.Core.Registry.Oci;
 using Bicep.Core.Semantics;
 using Bicep.Core.Utils;
@@ -50,22 +51,56 @@ namespace Bicep.Core.SourceCode
         public string? Message;
     }
 
+    //asdfg move these
+    public record SourceCodeDocumentLink(
+        //asdfg comments
+
+        // Span of the origin of this link.
+        TextSpan? OriginSelectionRange,
+
+        // The target path for this link.
+        Uri TargetUri, //asdfg moniker?
+
+        // asdfg The full target range of this link. If the target for example is a symbol
+        // then target range is the range enclosing this symbol not including
+        // leading/trailing whitespace but everything else like comments. This
+        // information is typically used to highlight the range in the editor.
+        TextSpan? TargetRange,
+
+        // asdfg The range that should be selected and revealed when this link is being
+        // followed, e.g the name of a function. Must be contained by the
+        // `targetRange`. See also `DocumentSymbol#range`
+        TextSpan? TargetSelectionRange //asdfg?
+    );
+
+    public record SourceCodeDocumentPathLink(
+        TextSpan? OriginSelectionRange,
+        string TargetPath, //asdfg moniker?
+        TextSpan? TargetRange,
+        TextSpan? TargetSelectionRange //asdfg?
+    );
+
     // Contains the individual source code files for a Bicep file and all of its dependencies.
     public partial class SourceArchive // Partial required for serialization
     {
-
-        // Attributes of this archive instance
-
+        #region Attributes of this archive instance
         private ArchiveMetadata InstanceMetadata { get; init; }
 
         public ImmutableArray<SourceFileInfo> SourceFiles { get; init; }
+
         public string EntrypointRelativePath => InstanceMetadata.EntryPoint;
+
         // The version of Bicep which created this deserialized archive instance.
         public string BicepVersion => InstanceMetadata.BicepVersion;
+
         // The version of the metadata file format used by this archive instance.
         public int MetadataVersion => InstanceMetadata.MetadataVersion;
 
-        // Constants
+        public IReadOnlyDictionary<string, SourceCodeDocumentPathLink[]> DocumentLinks => InstanceMetadata.DocumentLinks ?? new Dictionary<string, SourceCodeDocumentPathLink[]>();
+
+        #endregion
+
+        #region Constants
 
         public const string SourceKind_Bicep = "bicep";
         public const string SourceKind_ArmTemplate = "armTemplate";
@@ -77,8 +112,12 @@ namespace Bicep.Core.SourceCode
         private const int CurrentMetadataVersion = 0;
         private static readonly string CurrentBicepVersion = ThisAssembly.AssemblyVersion;
 
+        #endregion
+
+        #region Serialization
+
         public partial record SourceFileInfo(
-            string Path,        // the location, relative to the main.bicep file's folder, for the file that will be shown to the end user (required in all Bicep versions)
+            string Path,        // the location, relative to the main.bicep file's folder, for the file that will be shown to the end user (required in all Bicep versions) //asdfg FriendlyPath?  DisplayPath?  //asdfg this is the key for retrieving sources
             string ArchivePath, // the location (relative to root) of where the file is stored in the archive
             string Kind,         // kind of source
             string Contents
@@ -94,8 +133,8 @@ namespace Bicep.Core.SourceCode
             int MetadataVersion, //asdfg test
             string EntryPoint, // Path of the entrypoint file
             IEnumerable<SourceFileInfoEntry> SourceFiles,
-            IImmutableDictionary<string, SourceCodeDocumentLink[]>? DocumentLinks, // Maps source file path -> array of document links
-            string BicepVersion = "unknown"
+            string BicepVersion = "unknown",
+            IReadOnlyDictionary<string, SourceCodeDocumentPathLink[]>? DocumentLinks = null // Maps source file path -> array of document links
         );
 
         [JsonSerializable(typeof(SourceFileInfoEntry))]
@@ -107,6 +146,8 @@ namespace Bicep.Core.SourceCode
             string ArchivePath, // the location (relative to root) of where the file is stored in the archive
             string Kind         // kind of source
         );
+
+        #endregion
 
         private string? GetRequiredBicepVersionMessage()
         {
@@ -123,7 +164,7 @@ namespace Bicep.Core.SourceCode
             return null;
         }
 
-        public static SourceArchiveResult UnpackFromStream(Stream stream)
+        public static SourceArchiveResult TryUnpackFromStream(Stream stream)
         {
             var archive = new SourceArchive(stream);
             if (archive.GetRequiredBicepVersionMessage() is string message)
@@ -143,11 +184,11 @@ namespace Bicep.Core.SourceCode
         /// <returns>A .tar.gz file as a binary stream</returns>
         public static Stream PackSourcesIntoStream(SourceFileGrouping sourceFileGrouping)
         {
-            return PackSourcesIntoStream(sourceFileGrouping.EntryFileUri, sourceFileGrouping.SourceFiles.ToArray());
+            return PackSourcesIntoStream(sourceFileGrouping.EntryFileUri, null, sourceFileGrouping.SourceFiles.ToArray());
         }
 
         // TODO: Toughen this up to handle conflicting paths, ".." paths, etc.
-        public static Stream PackSourcesIntoStream(Uri entrypointFileUri, IDictionary<string, SourceCodeDocumentLink[]>? DocumentLinks, params ISourceFile[] sourceFiles)
+        public static Stream PackSourcesIntoStream(Uri entrypointFileUri, IReadOnlyDictionary<Uri, SourceCodeDocumentLink[]>? documentLinks, params ISourceFile[] sourceFiles)
         {
             var baseFolderBuilder = new UriBuilder(entrypointFileUri)
             {
@@ -195,7 +236,7 @@ namespace Bicep.Core.SourceCode
                     }
 
                     // Add the metadata file
-                    var metadataContents = CreateMetadataFileContents(entryPointPath, filesMetadata);
+                    var metadataContents = CreateMetadataFileContents(baseFolderUri, entryPointPath, filesMetadata, documentLinks);
                     WriteNewFileEntry(tarWriter, MetadataFileName, metadataContents);
                 }
             }
@@ -203,15 +244,21 @@ namespace Bicep.Core.SourceCode
             stream.Seek(0, SeekOrigin.Begin);
             return stream;
 
-            (string location, string archivePath) CalculateFilePathsFromUri(Uri uri)
+            (string location, string archivePath) CalculateFilePathsFromUri(Uri uri) //asdfg extract
             {
-                Uri relativeUri = baseFolderUri.MakeRelativeUri(uri);
-                var relativeLocation = Uri.UnescapeDataString(relativeUri.OriginalString);
+                var relativeLocation = CalculateRelativeFilePath(baseFolderUri, uri);
                 return (relativeLocation, relativeLocation);
             }
         }
 
-        private SourceArchive(Stream stream)
+        private static string CalculateRelativeFilePath(Uri baseFolderUri, Uri uri)
+        {
+            Uri relativeUri = baseFolderUri.MakeRelativeUri(uri);
+            var relativeLocation = Uri.UnescapeDataString(relativeUri.OriginalString);
+            return relativeLocation;
+        }
+
+        private SourceArchive(Stream stream) //asdfg assert all doc links are valid
         {
             var filesBuilder = ImmutableDictionary.CreateBuilder<string, string>();
 
@@ -244,11 +291,35 @@ namespace Bicep.Core.SourceCode
             this.SourceFiles = infos.ToImmutableArray();
         }
 
-        private static string CreateMetadataFileContents(string entrypointPath, IEnumerable<SourceFileInfoEntry> files)
-        {
+        private static string CreateMetadataFileContents(
+            Uri baseFolderUri,
+            string entrypointPath,
+            IEnumerable<SourceFileInfoEntry> files,
+            IReadOnlyDictionary<Uri, SourceCodeDocumentLink[]>? documentLinks
+        ) {
             // Add the __metadata.json file
-            var metadata = new ArchiveMetadata(CurrentMetadataVersion, entrypointPath, files, CurrentBicepVersion);
+            var metadata = new ArchiveMetadata(CurrentMetadataVersion, entrypointPath, files, CurrentBicepVersion, UriDocumentLinksToPathBasedLinks(baseFolderUri, documentLinks));
             return JsonSerializer.Serialize(metadata, MetadataSerializationContext.Default.ArchiveMetadata);
+        }
+
+        private static IReadOnlyDictionary<string, SourceCodeDocumentPathLink[]>? UriDocumentLinksToPathBasedLinks(
+            Uri baseFolderUri,
+            IReadOnlyDictionary<Uri, SourceCodeDocumentLink[]>? uriBasedDocumentLinks
+        ) {
+            return uriBasedDocumentLinks?.Select(
+                x => new KeyValuePair<string, SourceCodeDocumentPathLink[]>(
+                    CalculateRelativeFilePath(baseFolderUri, x.Key),
+                    x.Value.Select(link => DocumentPathLinkFromUriLink(baseFolderUri, link)).ToArray()
+                )).ToImmutableDictionary();
+        }
+
+        public static SourceCodeDocumentPathLink DocumentPathLinkFromUriLink(Uri baseFolderUri, SourceCodeDocumentLink uriBasedLink)
+        {
+            return new SourceCodeDocumentPathLink
+                (uriBasedLink.OriginSelectionRange,
+                CalculateRelativeFilePath(baseFolderUri, uriBasedLink.TargetUri),
+                uriBasedLink.TargetRange,
+                uriBasedLink.TargetSelectionRange);
         }
 
         private static void WriteNewFileEntry(TarWriter tarWriter, string archivePath, string contents)

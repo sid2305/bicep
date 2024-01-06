@@ -11,6 +11,7 @@ using Bicep.Core.Diagnostics;
 using Bicep.Core.Extensions;
 using Bicep.Core.Navigation;
 using Bicep.Core.Semantics;
+using Bicep.Core.SourceCode;
 using Bicep.Core.Syntax;
 using Bicep.Core.TypeSystem.Types;
 using Bicep.Core.UnitTests.Assertions;
@@ -445,21 +446,40 @@ namespace Bicep.Core.UnitTests.Diagnostics.LinterRuleTests
                    ")
             );
 
-            foreach (var sourceAndDictPair in result.Compilation.SourceFileGrouping.FileUriResultByArtifactReference)
+            var links = Bicep.Core.SourceCode.Asdfg.GetDocumentLinks(result.Compilation.SourceFileGrouping);
+            foreach (var link in links)
             {
-                ISourceFile referencingFile = sourceAndDictPair.Key;
-                IDictionary<IArtifactReferenceSyntax, Result<Uri, UriResolutionError>> referenceSyntaxeToUri = sourceAndDictPair.Value;
-
-                foreach (var syntaxAndUriPair in referenceSyntaxeToUri)
+                Trace.WriteLine($"{link.Key}: {link}");
+            }
+            var archiveStream = SourceArchive.PackSourcesIntoStream(
+                result.Compilation.SourceFileGrouping.EntryFileUri,
+                links,
+                result.Compilation.SourceFileGrouping.SourceFiles.ToArray());
+            var archive = SourceArchive.TryUnpackFromStream(archiveStream);
+            foreach (var pair in archive.SourceArchive!.DocumentLinks)
+            {
+                Trace.WriteLine(pair.Key);
+                foreach (var link in pair.Value)
                 {
-                    IArtifactReferenceSyntax syntax = syntaxAndUriPair.Key;
-                    Result<Uri, UriResolutionError> uriResult = syntaxAndUriPair.Value;
-                    if (syntax.Path is { } && uriResult.IsSuccess(out var uri))
-                    {
-                        Trace.WriteLine($"{referencingFile.FileUri}: {syntax.Path.ToText()} -> {uri}");
-                    }
+                    Trace.WriteLine($"  {link.OriginSelectionRange} {link.TargetPath} {link.TargetRange} {link.TargetSelectionRange}");
                 }
             }
+
+            //foreach (var sourceAndDictPair in result.Compilation.SourceFileGrouping.FileUriResultByArtifactReference)
+            //{
+            //    ISourceFile referencingFile = sourceAndDictPair.Key;
+            //    IDictionary<IArtifactReferenceSyntax, Result<Uri, UriResolutionError>> referenceSyntaxeToUri = sourceAndDictPair.Value;
+
+            //    foreach (var syntaxAndUriPair in referenceSyntaxeToUri)
+            //    {
+            //        IArtifactReferenceSyntax syntax = syntaxAndUriPair.Key;
+            //        Result<Uri, UriResolutionError> uriResult = syntaxAndUriPair.Value;
+            //        if (syntax.Path is { } && uriResult.IsSuccess(out var uri))
+            //        {
+            //            Trace.WriteLine($"{referencingFile.FileUri}: {syntax.Path.ToText()} -> {uri}");
+            //        }
+            //    }
+            //}
         }
 
         [TestMethod]
