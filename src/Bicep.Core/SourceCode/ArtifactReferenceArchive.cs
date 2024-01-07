@@ -13,6 +13,7 @@ using Bicep.Core.Utils;
 using Bicep.Core.Workspaces;
 using Uri = System.Uri;
 using TextSpan = Bicep.Core.Parsing.TextSpan;
+using Bicep.Core.Text;
 
 
 //asdfg filename?
@@ -72,26 +73,32 @@ namespace Bicep.Core.SourceCode;
 
 public static class Asdfg
 {
-    public static IImmutableDictionary<Uri, SourceCodeDocumentLink[]> GetDocumentLinks(SourceFileGrouping sourceFileGrouping)
+    public static IImmutableDictionary<Uri, SourceCodeDocumentUriLink[]> GetDocumentLinks(SourceFileGrouping sourceFileGrouping) //asdfg test
     {
-        var dictionary = new Dictionary<Uri, SourceCodeDocumentLink[]>();
+        var dictionary = new Dictionary<Uri, SourceCodeDocumentUriLink[]>();
 
         foreach (var sourceAndDictPair in sourceFileGrouping.FileUriResultByArtifactReference)
         {
             ISourceFile referencingFile = sourceAndDictPair.Key;
-            IDictionary<IArtifactReferenceSyntax, Result<Uri, UriResolutionError>> referenceSyntaxeToUri = sourceAndDictPair.Value;
+            IDictionary<IArtifactReferenceSyntax, Result<Uri, UriResolutionError>> referenceSyntaxToUri = sourceAndDictPair.Value;
 
-            var linksForReferencingFile = new List<SourceCodeDocumentLink>();
+            var referencingFileLineStarts = TextCoordinateConverter.GetLineStarts(referencingFile.GetOriginalSource());
 
-            foreach (var syntaxAndUriPair in referenceSyntaxeToUri)
+            var linksForReferencingFile = new List<SourceCodeDocumentUriLink>();
+
+            foreach (var syntaxAndUriPair in referenceSyntaxToUri)
             {
                 IArtifactReferenceSyntax syntax = syntaxAndUriPair.Key;
                 Result<Uri, UriResolutionError> uriResult = syntaxAndUriPair.Value;
                 if (syntax.Path is { } && uriResult.IsSuccess(out var uri))
                 {
-                    Trace.WriteLine($"{referencingFile.FileUri}: {syntax.Path.ToText()} -> {uri}");
-                    linksForReferencingFile.Add(new SourceCodeDocumentLink(
-                        syntax.Path.Span,
+                    Trace.WriteLine($"{referencingFile.FileUri}: {syntax.Path.ToText()} -> {uri}"); //asdfg
+
+                    var start = new SourceCodePosition(TextCoordinateConverter.GetPosition(referencingFileLineStarts, syntax.Path.Span.Position));
+                    var end = new SourceCodePosition(TextCoordinateConverter.GetPosition(referencingFileLineStarts, syntax.Path.Span.Position + syntax.Path.Span.Length));
+
+                    linksForReferencingFile.Add(new SourceCodeDocumentUriLink(
+                        new SourceCodeRange(start, end),
                         uri,
                         null, //asdfg target span
                         null //asdfg target selection span

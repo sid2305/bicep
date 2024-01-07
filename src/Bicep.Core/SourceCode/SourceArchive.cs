@@ -51,35 +51,6 @@ namespace Bicep.Core.SourceCode
         public string? Message;
     }
 
-    //asdfg move these
-    public record SourceCodeDocumentLink(
-        //asdfg comments
-
-        // Span of the origin of this link.
-        TextSpan? OriginSelectionRange,
-
-        // The target path for this link.
-        Uri TargetUri, //asdfg moniker?
-
-        // asdfg The full target range of this link. If the target for example is a symbol
-        // then target range is the range enclosing this symbol not including
-        // leading/trailing whitespace but everything else like comments. This
-        // information is typically used to highlight the range in the editor.
-        TextSpan? TargetRange,
-
-        // asdfg The range that should be selected and revealed when this link is being
-        // followed, e.g the name of a function. Must be contained by the
-        // `targetRange`. See also `DocumentSymbol#range`
-        TextSpan? TargetSelectionRange //asdfg?
-    );
-
-    public record SourceCodeDocumentPathLink(
-        TextSpan? OriginSelectionRange,
-        string TargetPath, //asdfg moniker?
-        TextSpan? TargetRange,
-        TextSpan? TargetSelectionRange //asdfg?
-    );
-
     // Contains the individual source code files for a Bicep file and all of its dependencies.
     public partial class SourceArchive // Partial required for serialization
     {
@@ -184,11 +155,12 @@ namespace Bicep.Core.SourceCode
         /// <returns>A .tar.gz file as a binary stream</returns>
         public static Stream PackSourcesIntoStream(SourceFileGrouping sourceFileGrouping)
         {
-            return PackSourcesIntoStream(sourceFileGrouping.EntryFileUri, null, sourceFileGrouping.SourceFiles.ToArray());
+            var documentLinks = Asdfg.GetDocumentLinks(sourceFileGrouping);
+            return PackSourcesIntoStream(sourceFileGrouping.EntryFileUri, documentLinks, sourceFileGrouping.SourceFiles.ToArray());
         }
 
         // TODO: Toughen this up to handle conflicting paths, ".." paths, etc.
-        public static Stream PackSourcesIntoStream(Uri entrypointFileUri, IReadOnlyDictionary<Uri, SourceCodeDocumentLink[]>? documentLinks, params ISourceFile[] sourceFiles)
+        public static Stream PackSourcesIntoStream(Uri entrypointFileUri, IReadOnlyDictionary<Uri, SourceCodeDocumentUriLink[]>? documentLinks, params ISourceFile[] sourceFiles)
         {
             var baseFolderBuilder = new UriBuilder(entrypointFileUri)
             {
@@ -236,6 +208,7 @@ namespace Bicep.Core.SourceCode
                     }
 
                     // Add the metadata file
+                    //asdfg test no private info
                     var metadataContents = CreateMetadataFileContents(baseFolderUri, entryPointPath, filesMetadata, documentLinks);
                     WriteNewFileEntry(tarWriter, MetadataFileName, metadataContents);
                 }
@@ -295,7 +268,7 @@ namespace Bicep.Core.SourceCode
             Uri baseFolderUri,
             string entrypointPath,
             IEnumerable<SourceFileInfoEntry> files,
-            IReadOnlyDictionary<Uri, SourceCodeDocumentLink[]>? documentLinks
+            IReadOnlyDictionary<Uri, SourceCodeDocumentUriLink[]>? documentLinks
         ) {
             // Add the __metadata.json file
             var metadata = new ArchiveMetadata(CurrentMetadataVersion, entrypointPath, files, CurrentBicepVersion, UriDocumentLinksToPathBasedLinks(baseFolderUri, documentLinks));
@@ -304,7 +277,7 @@ namespace Bicep.Core.SourceCode
 
         private static IReadOnlyDictionary<string, SourceCodeDocumentPathLink[]>? UriDocumentLinksToPathBasedLinks(
             Uri baseFolderUri,
-            IReadOnlyDictionary<Uri, SourceCodeDocumentLink[]>? uriBasedDocumentLinks
+            IReadOnlyDictionary<Uri, SourceCodeDocumentUriLink[]>? uriBasedDocumentLinks
         ) {
             return uriBasedDocumentLinks?.Select(
                 x => new KeyValuePair<string, SourceCodeDocumentPathLink[]>(
@@ -313,10 +286,10 @@ namespace Bicep.Core.SourceCode
                 )).ToImmutableDictionary();
         }
 
-        public static SourceCodeDocumentPathLink DocumentPathLinkFromUriLink(Uri baseFolderUri, SourceCodeDocumentLink uriBasedLink)
+        private static SourceCodeDocumentPathLink DocumentPathLinkFromUriLink(Uri baseFolderUri, SourceCodeDocumentUriLink uriBasedLink)
         {
-            return new SourceCodeDocumentPathLink
-                (uriBasedLink.OriginSelectionRange,
+            return new SourceCodeDocumentPathLink(
+                uriBasedLink.Range,
                 CalculateRelativeFilePath(baseFolderUri, uriBasedLink.TargetUri),
                 uriBasedLink.TargetRange,
                 uriBasedLink.TargetSelectionRange);

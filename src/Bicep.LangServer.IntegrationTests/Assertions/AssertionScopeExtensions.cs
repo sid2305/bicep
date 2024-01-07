@@ -22,12 +22,12 @@ namespace Bicep.LangServer.IntegrationTests.Assertions
                 contextName,
                 (data ?? Enumerable.Empty<T>()).Select(x => new PrintHelper.Annotation(FromRange(bicepFile, rangeFunc(x)), messageFunc(x))));
 
-        public static TextSpan FromRange(BicepSourceFile bicepFile, Range range)
+        public static TextSpan FromRange(BicepSourceFile bicepFile, Range range) //asdfg hmmm....
         {
-            var position = TextCoordinateConverter.GetOffset(bicepFile.LineStarts, range.Start.Line, range.Start.Character);
-            var length = TextCoordinateConverter.GetOffset(bicepFile.LineStarts, range.End.Line, range.End.Character) - position;
+            var offset = TextCoordinateConverter.GetOffset(bicepFile.LineStarts, range.Start.Line, range.Start.Character);
+            var length = TextCoordinateConverter.GetOffset(bicepFile.LineStarts, range.End.Line, range.End.Character) - offset;
 
-            return new TextSpan(position, length);
+            return new TextSpan(offset, length);
         }
     }
 }

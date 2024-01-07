@@ -461,25 +461,9 @@ namespace Bicep.Core.UnitTests.Diagnostics.LinterRuleTests
                 Trace.WriteLine(pair.Key);
                 foreach (var link in pair.Value)
                 {
-                    Trace.WriteLine($"  {link.OriginSelectionRange} {link.TargetPath} {link.TargetRange} {link.TargetSelectionRange}");
+                    Trace.WriteLine($"  {link.Range} {link.Target} {link.TargetRange} {link.TargetSelectionRange}");
                 }
             }
-
-            //foreach (var sourceAndDictPair in result.Compilation.SourceFileGrouping.FileUriResultByArtifactReference)
-            //{
-            //    ISourceFile referencingFile = sourceAndDictPair.Key;
-            //    IDictionary<IArtifactReferenceSyntax, Result<Uri, UriResolutionError>> referenceSyntaxeToUri = sourceAndDictPair.Value;
-
-            //    foreach (var syntaxAndUriPair in referenceSyntaxeToUri)
-            //    {
-            //        IArtifactReferenceSyntax syntax = syntaxAndUriPair.Key;
-            //        Result<Uri, UriResolutionError> uriResult = syntaxAndUriPair.Value;
-            //        if (syntax.Path is { } && uriResult.IsSuccess(out var uri))
-            //        {
-            //            Trace.WriteLine($"{referencingFile.FileUri}: {syntax.Path.ToText()} -> {uri}");
-            //        }
-            //    }
-            //}
         }
 
         [TestMethod]

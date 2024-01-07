@@ -42,7 +42,7 @@ namespace Bicep.LanguageServer.Handlers
             this.fileResolver = fileResolver;
         }
 
-        public Task<BicepExternalSourceResponse> Handle(BicepExternalSourceParams request, CancellationToken cancellationToken)
+        public Task<BicepExternalSourceResponse> Handle(BicepExternalSourceParams request, CancellationToken cancellationToken) //asdfgasdfg reuse?
         {
             // If any of the following paths results in an exception being thrown (and surfaced client-side to the user),
             // it indicates a code defect client or server-side.
@@ -77,7 +77,7 @@ namespace Bicep.LanguageServer.Handlers
                 SourceArchiveResult sourceArchiveResult = moduleDispatcher.TryGetModuleSources(moduleReference);
                 if (sourceArchiveResult.SourceArchive is { })
                 {
-                    var requestedFile = sourceArchiveResult.SourceArchive.SourceFiles.FirstOrDefault(f => f.Path == request.requestedSourceFile);
+                    var requestedFile = sourceArchiveResult.SourceArchive.SourceFiles.FirstOrDefault(f => f.Path == request.requestedSourceFile); //asdfg extract
                     if (requestedFile is null)
                     {
                         throw new InvalidOperationException($"Could not find source file \"{request.requestedSourceFile}\" in the sources for module \"{moduleReference.FullyQualifiedReference}\"");
