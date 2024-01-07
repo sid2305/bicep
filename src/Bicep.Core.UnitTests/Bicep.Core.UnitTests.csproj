@@ -30,4 +30,10 @@
       <WithCulture>false</WithCulture>
     </EmbeddedResource>
   </ItemGroup>
+  <ItemGroup>
+    <None Remove="SourceCode\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="SourceCode\" />
+  </ItemGroup>
 </Project>

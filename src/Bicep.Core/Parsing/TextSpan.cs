@@ -3,11 +3,27 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 
 namespace Bicep.Core.Parsing
 {
+    public class TextSpanConverter : JsonConverter<TextSpan>
+    {
+        public override TextSpan Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            string s = reader.GetString() ?? throw new ArgumentException("Expected a TextSpan value in a string");
+            return TextSpan.Parse(s);
+        }
+
+        public override void Write(Utf8JsonWriter writer, TextSpan textSpan, JsonSerializerOptions options)
+        {
+            writer.WriteStringValue(textSpan.ToString());
+        }
+    }
+
+    [JsonConverter(typeof(TextSpanConverter))]
     public readonly record struct TextSpan : IPositionable
     {
         private static readonly Regex TextSpanPattern = new(@"^\[(?<startInclusive>\d+)\:(?<endExclusive>\d+)\]$", RegexOptions.ECMAScript | RegexOptions.Compiled);
