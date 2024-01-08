@@ -78,17 +78,18 @@ namespace Bicep.LanguageServer.Handlers
                                     "bicep.internal.showModuleSourceFile",
                                     new ExternalSourceReference(request.TextDocument.Uri).WithRequestForCompiledJson().ToUri().ToString());
 
-                                foreach (var source in sourceArchiveResult.SourceArchive.SourceFiles)
-                                {
-                                    if (string.CompareOrdinal(source.Path, externalReference.RequestedFile) != 0)
-                                    {
-                                        yield return CreateCodeLens(
-                                            DocumentStart,
-                                            $"Show {source.Path}",
-                                            "bicep.internal.showModuleSourceFile",
-                                            new ExternalSourceReference(request.TextDocument.Uri).WithRequestForSourceFile(source.Path).ToUri().ToString());
-                                    }
-                                }
+                                //asdfg remove
+                                //foreach (var source in sourceArchiveResult.SourceArchive.SourceFiles)
+                                //{
+                                //    if (string.CompareOrdinal(source.Path, externalReference.RequestedFile) != 0)
+                                //    {
+                                //        yield return CreateCodeLens(
+                                //            DocumentStart,
+                                //            $"Show {source.Path}",
+                                //            "bicep.internal.showModuleSourceFile",
+                                //            new ExternalSourceReference(request.TextDocument.Uri).WithRequestForSourceFile(source.Path).ToUri().ToString());
+                                //    }
+                                //}
                             }
                             else
                             {
