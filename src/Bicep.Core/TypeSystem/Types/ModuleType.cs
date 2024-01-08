@@ -28,7 +28,7 @@ namespace Bicep.Core.TypeSystem.Types
             => typeSymbol switch
             {
                 ModuleType moduleType => moduleType,
-                ArrayType { Item: ModuleType moduleType } => moduleType,
+                ArrayType { Item: ModuleType moduleType } => moduleType, // asdfg test
                 _ => null
             };
 

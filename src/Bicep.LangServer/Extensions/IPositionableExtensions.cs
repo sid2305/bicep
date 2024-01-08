@@ -22,7 +22,7 @@ namespace Bicep.LanguageServer.Extensions
                 Math.Min(start, positionable.Span.Length),
                 Math.Min(length, positionable.Span.Length - start));
 
-        public static Range ToRange(this IPositionable positionable, ImmutableArray<int> lineStarts) =>
+        public static Range ToRange(this IPositionable positionable, ImmutableArray<int> lineStarts) => //asdfgasdfg
             new()
             {
                 Start = PositionHelper.GetPosition(lineStarts, positionable.Span.Position),

@@ -1,10 +1,23 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+using System;
+using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Diagnostics;
+using System.Linq;
 using Bicep.Core.Analyzers.Linter.Rules;
 using Bicep.Core.Diagnostics;
+using Bicep.Core.Extensions;
+using Bicep.Core.Navigation;
+using Bicep.Core.Semantics;
+using Bicep.Core.SourceCode;
+using Bicep.Core.Syntax;
+using Bicep.Core.TypeSystem.Types;
 using Bicep.Core.UnitTests.Assertions;
 using Bicep.Core.UnitTests.Utils;
+using Bicep.Core.Utils;
+using Bicep.Core.Workspaces;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -403,6 +416,84 @@ namespace Bicep.Core.UnitTests.Diagnostics.LinterRuleTests
             );
 
             result.Diagnostics.Should().NotHaveAnyDiagnostics();
+        }
+
+        [TestMethod]
+        public void Asdfg()
+        {
+            var result = CompilationHelper.Compile(
+                ("main.bicep", @"
+                    module m1a 'module1.bicep' = {
+                      name: 'name1a'
+                    }
+                    module m2 'abc/../module2.bicep' = {
+                      name: 'name2'
+                    }
+                    module m1b 'abc/../module1.bicep' = {
+                      name: 'name1b'
+                    }
+                "),
+                ("module1.bicep", @"
+                    param location string = 'resourceGroup().location' // *not* a location-related param
+                    output o string = location
+                    module m2 'abc/../module2.bicep' = {
+                      name: 'name2'
+                    }
+                   "),
+                ("module2.bicep", @"
+                    param location string = 'resourceGroup().location' // *not* a location-related param
+                    output o string = location
+                   ")
+            );
+
+            var links = Bicep.Core.SourceCode.Asdfg.GetDocumentLinks(result.Compilation.SourceFileGrouping);
+            foreach (var link in links)
+            {
+                Trace.WriteLine($"{link.Key}: {link}");
+            }
+            var archiveStream = SourceArchive.PackSourcesIntoStream(
+                result.Compilation.SourceFileGrouping.EntryFileUri,
+                links,
+                result.Compilation.SourceFileGrouping.SourceFiles.ToArray());
+            var archive = SourceArchive.TryUnpackFromStream(archiveStream);
+            foreach (var pair in archive.SourceArchive!.DocumentLinks)
+            {
+                Trace.WriteLine(pair.Key);
+                foreach (var link in pair.Value)
+                {
+                    Trace.WriteLine($"  {link.Range} {link.Target} {link.TargetRange} {link.TargetSelectionRange}");
+                }
+            }
+        }
+
+        [TestMethod]
+        public void Asdfg2()
+        {
+            var result = CompilationHelper.Compile(
+                ("main.bicep", @"
+                    targetScope = 'subscription'
+
+                    param location string
+
+                    module m1 'module1.bicep' = {
+                      name: 'm1'
+                      params: {
+                      }
+                    }
+
+                    output o string = location
+                    "),
+                ("module1.bicep", @"
+                    targetScope = 'subscription'
+                    param myParam string = deployment().location
+                    output o string = myParam
+                   ")
+            );
+            result.Diagnostics.Should().HaveDiagnostics(new[]
+            {
+                (ExplicitValuesForLocationParamsRule.Code, DiagnosticLevel.Warning, "Parameter 'myParam' of module 'm1' isn't assigned an explicit value, and its default value may not give the intended behavior for a location-related parameter. You should assign an explicit value to the parameter."),
+
+            });
         }
     }
 }

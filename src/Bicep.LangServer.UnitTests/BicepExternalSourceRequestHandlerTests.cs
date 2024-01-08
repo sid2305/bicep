@@ -247,7 +247,7 @@ namespace Bicep.LangServer.UnitTests.Handlers
 
             var bicepSource = "metadata hi = 'This is the bicep source file'";
             var bicepUri = new Uri("file:///foo/bar/entrypoint.bicep");
-            var sourceArchive = SourceArchive.UnpackFromStream(SourceArchive.PackSourcesIntoStream(bicepUri, new Core.Workspaces.ISourceFile[] {
+            var sourceArchive = SourceArchive.TryUnpackFromStream(SourceArchive.PackSourcesIntoStream(bicepUri, null, new Core.Workspaces.ISourceFile[] {
                 SourceFileFactory.CreateBicepFile(bicepUri, bicepSource)}));
             dispatcher.Setup(m => m.TryGetModuleSources(moduleReference!)).Returns(sourceArchive);
 
@@ -289,7 +289,7 @@ namespace Bicep.LangServer.UnitTests.Handlers
 
             var bicepSource = "metadata hi = 'This is the bicep source file'";
             var bicepUri = new Uri("file:///foo/bar/entrypoint.bicep");
-            var sourceArchive = SourceArchive.UnpackFromStream(SourceArchive.PackSourcesIntoStream(bicepUri, new Core.Workspaces.ISourceFile[] {
+            var sourceArchive = SourceArchive.TryUnpackFromStream(SourceArchive.PackSourcesIntoStream(bicepUri, null, new Core.Workspaces.ISourceFile[] {
                 SourceFileFactory.CreateBicepFile(bicepUri, bicepSource)}));
             dispatcher.Setup(m => m.TryGetModuleSources(moduleReference!)).Returns(sourceArchive);
 
@@ -413,8 +413,9 @@ namespace Bicep.LangServer.UnitTests.Handlers
                 new Uri("file:///parent.bicep", UriKind.Absolute));
 
             SourceArchive? sourceArchive = entrypointUri is { } ?
-                SourceArchive.UnpackFromStream(SourceArchive.PackSourcesIntoStream(
+                SourceArchive.TryUnpackFromStream(SourceArchive.PackSourcesIntoStream(
                     entrypointUri,
+                    null,
                     new Core.Workspaces.ISourceFile[] {
                         SourceFileFactory.CreateBicepFile(entrypointUri, "metadata description = 'bicep module'")
                     })).SourceArchive
