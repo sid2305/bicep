@@ -9,6 +9,7 @@ using System.IO.Abstractions.TestingHelpers;
 using System.IO.Compression;
 using System.Linq;
 using System.Text;
+using Bicep.Core.FileSystem;
 using Bicep.Core.SourceCode;
 using Bicep.Core.UnitTests.Assertions;
 using Bicep.Core.UnitTests.Utils;
@@ -17,6 +18,7 @@ using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.WindowsAzure.ResourceStack.Common.Extensions;
 using OmniSharp.Extensions.LanguageServer.Protocol;
+using static Microsoft.SRM.DecisionTree;
 
 namespace Bicep.Core.UnitTests.SourceCode;
 
@@ -148,19 +150,18 @@ public class SourceArchiveTests
         using var stream = SourceArchive.PackSourcesIntoStream(mainBicep.FileUri, mainBicep, mainJson, standaloneJson, templateSpecMainJson, localModuleJson);
         stream.Length.Should().BeGreaterThan(0);
 
-        SourceArchive? sourceArchive = SourceArchive.UnpackFromStream(stream).TryUnwrap();
-        sourceArchive.Should().NotBeNull();
+        SourceArchive? sourceArchive = SourceArchive.UnpackFromStream(stream).UnwrapOrThrow();
         sourceArchive!.EntrypointRelativePath.Should().Be("main.bicep");
 
 
         var archivedFiles = sourceArchive.SourceFiles.ToArray();
         archivedFiles.Should().BeEquivalentTo(
             new SourceArchive.SourceFileInfo[] {
-                new ("main.bicep", "main.bicep", SourceArchive.SourceKind_Bicep, MainDotBicepSource),
-                new ("main.json", "main.json", SourceArchive.SourceKind_ArmTemplate, MainDotJsonSource ),
-                new ("standalone.json", "standalone.json", SourceArchive.SourceKind_ArmTemplate, StandaloneJsonSource),
-                new ("Main template.json", "Main template.json", SourceArchive.SourceKind_TemplateSpec,  TemplateSpecJsonSource),
-                new ("localModule.json", "localModule.json", SourceArchive.SourceKind_ArmTemplate,  LocalModuleDotJsonSource),
+                new ("main.bicep", "files/main.bicep", SourceArchive.SourceKind_Bicep, MainDotBicepSource),
+                new ("main.json", "files/main.json", SourceArchive.SourceKind_ArmTemplate, MainDotJsonSource ),
+                new ("standalone.json", "files/standalone.json", SourceArchive.SourceKind_ArmTemplate, StandaloneJsonSource),
+                new ("Main template.json", "files/Main template.json", SourceArchive.SourceKind_TemplateSpec,  TemplateSpecJsonSource),
+                new ("localModule.json", "files/localModule.json", SourceArchive.SourceKind_ArmTemplate,  LocalModuleDotJsonSource),
             });
     }
 
@@ -228,79 +229,310 @@ public class SourceArchiveTests
         links.Should().BeEquivalentTo(expected);
     }
 
-    [DataTestMethod]
     [DataRow(
-        "my other.bicep",
-        "my other.bicep",
+        new string[] { "c:/my root/my project/my main.bicep", "c:/my other.bicep" },
+        new string[] { "my root/my project/my main.bicep", "my other.bicep" },
+        new string[] { "files/my root/my project/my main.bicep", "files/my other.bicep" },
         DisplayName = "HandlesPathsCorrectly: spaces")]
     [DataRow(
+        new string[] { "c:\\my root\\my project\\my main.bicep", "c:/my other.bicep" },
+        new string[] { "my root/my project/my main.bicep", "my other.bicep" },
+        new string[] { "files/my root/my project/my main.bicep", "files/my other.bicep" },
+        DisplayName = "HandlesPathsCorrectly: backslashes")]
+    /*[DataRow(
+        "c:\\my root\\my project\\my main.bicep",
+        "subfolder\\my other.bicep",
+        "my main.bicep",
+        "subfolder/my other.bicep",
+        "files/subfolder/my other.bicep",
+        DisplayName = "HandlesPathsCorrectly: backslash")]
+    [DataRow(
+        "c:/my root/my project/my main.bicep",
         "/my root/my project/sub folder/my other bicep.bicep",
+        "my main.bicep",
         "sub folder/my other bicep.bicep",
+        "files/sub folder/my other bicep.bicep",
         DisplayName = "HandlesPathsCorrectly: subfolder")]
     [DataRow(
+        "c:/my root/my project/my main.bicep",
+        "c:/my root/my project/sub folder/my other bicep.bicep",
+        "my main.bicep",
+        "sub folder/my other bicep.bicep",
+        "files/sub folder/my other bicep.bicep",
+        DisplayName = "HandlesPathsCorrectly: subfolder")]
+    [DataRow(
+        "c:\\my root\\my project\\my main.bicep",
+        "c:\\my root/my project\\sub folder\\my other bicep.bicep",
+        "my main.bicep",
+        "sub folder/my other bicep.bicep",
+        "files/sub folder/my other bicep.bicep",
+        DisplayName = "HandlesPathsCorrectly: windows root format")]
+    [DataRow(
+        "/my root/my project/my main.bicep",
+        "/my root/my project/sub folder/my other bicep.bicep",
+        "my main.bicep",
+        "sub folder/my other bicep.bicep",
+        "files/sub folder/my other bicep.bicep",
+        "linux",
+        DisplayName = "HandlesPathsCorrectly: Linux root format")]
+    [DataRow(
+        "c:/my root/my project/my main.bicep",
+        "\\my root\\my project\\sub folder\\my other bicep.bicep",
+        "my main.bicep",
+        "sub folder/my other bicep.bicep",
+        "files/sub folder/my other bicep.bicep",
+        DisplayName = "HandlesPathsCorrectly: subfolder")]
+    [DataRow(
+        "c:/my root/my project/my main.bicep",
         "/my root/my project/sub folder/sub folder 2/my other bicep.bicep",
+        "my main.bicep",
         "sub folder/sub folder 2/my other bicep.bicep",
+        "files/sub folder/sub folder 2/my other bicep.bicep",
         DisplayName = "HandlesPathsCorrectly: sub-subfolder")]
     [DataRow(
+        "c:/my root/my project/my main.bicep",
         "/my root/my other bicep.bicep",
+        "my main.bicep",
         "../my other bicep.bicep",
-        DisplayName = "HandlesPathsCorrectly: ..")]
+        "files/parent/my other bicep.bicep",
+        DisplayName = "HandlesPathsCorrectly: ../")]
     [DataRow(
+        "c:/my root/my project/my main.bicep",
         "/my other bicep.bicep",
+        "my main.bicep",
         "../../my other bicep.bicep",
-        DisplayName = "HandlesPathsCorrectly: ../..")]
+        "files/parent/parent/my other bicep.bicep",
+        DisplayName = "HandlesPathsCorrectly: ../../")]
     [DataRow(
+        "c:/my root/my project/my project2/my main.bicep",
+        "c:/my other bicep.bicep",
+        "my main.bicep",
+        "../../../my other bicep.bicep",
+        "files/parent/parent/parent/my other bicep.bicep",
+        DisplayName = "HandlesPathsCorrectly: ../../../")]
+    [DataRow(
+        "c:/my root/my project/my main.bicep",
+        "/my root/..folder/my other bicep.bicep",
+        "my main.bicep",
+        "../..folder/my other bicep.bicep",
+        "files/parent/..folder/my other bicep.bicep",
+        DisplayName = "HandlesPathsCorrectly: ..folder")]
+    [DataRow(
+        "c:/my root/my project/my main.bicep",
         "/folder/my other bicep.bicep",
+        "my main.bicep",
         "../../folder/my other bicep.bicep",
+        "files/parent/parent/folder/my other bicep.bicep",
         DisplayName = "HandlesPathsCorrectly: ../../folder")]
     [DataRow(
-        "/my root/my project/my other bicep.bicep",
-        "my other bicep.bicep",
+        "c:/my root/my project/my main.bicep",
+        "c:/my other root/my project/my other bicep.bicep",
+        "my main.bicep",
+        "../../my other root/my project/my other bicep.bicep",
+        "files/parent/parent/my other root/my project/my other bicep.bicep",
+        DisplayName = "HandlesPathsCorrectly: no folders in common")]
+    [DataRow(
+        "c:/my root/my project/my main.bicep",
+        "c:/my root/my..project/..my other bicep.bicep",
+        "my main.bicep",
+        "../my..project/..my other bicep.bicep",
+        "files/parent/my..project/..my other bicep.bicep",
+        DisplayName = "HandlesPathsCorrectly: .. at beginning of filename")]
+    [DataRow(
+        "c:/my root/my project/my main.bicep",
+        "c:/my root/my..project/my other bicep.bicep..",
+        "my main.bicep",
+        "../my..project/my other bicep.bicep..",
+        "files/parent/my..project/my other bicep.bicep..",
+        DisplayName = "HandlesPathsCorrectly: .. at end of filename")]
+    [DataRow(
+        "c:/my root/my project/my main.bicep",
+        "c:/my root/my..project/my other..bicep.bicep",
+        "my main.bicep",
+        "../my..project/my other..bicep.bicep",
+        "files/parent/my..project/my other..bicep.bicep",
+        DisplayName = "HandlesPathsCorrectly: .. in middle of filename")]
+    [DataRow(
+        "c:/my root/my project/my main.bicep",
+        "c:/my root/my project/subfolder/my other bicep.bicep",
+        "my main.bicep",
+        "subfolder/my other bicep.bicep",
+        "files/subfolder/my other bicep.bicep",
+        DisplayName = "HandlesPathsCorrectly: rooted to drive: slashes")]
+    [DataRow(
+        "c:\\my root\\my project\\my main.bicep",
+        "c:/my root/my project/subfolder/my other bicep.bicep",
+        "my main.bicep",
+        "subfolder/my other bicep.bicep",
+        "files/subfolder/my other bicep.bicep",
+        DisplayName = "HandlesPathsCorrectly: rooted to drive: backslashes 1")]
+    [DataRow(
+        "c:/my root/my project/my main.bicep",
+        "c:\\my root\\my project\\subfolder\\my other bicep.bicep",
+        "my main.bicep",
+        "subfolder/my other bicep.bicep",
+        "files/subfolder/my other bicep.bicep",
+        DisplayName = "HandlesPathsCorrectly: rooted to drive: backslashes 2")]
+    [DataRow(
+        // This shouldn't ever happen, with the exception of when the cache root path is on another drive, because local module files must be relative to the referencing file.
+        "c:/my root/my project/my main.bicep",
+        "d:/my root/my project/my other bicep.bicep",
+        "my main.bicep",
+        "d:/my root/my project/my other bicep.bicep",
+        "files/d_/my root/my project/my other bicep.bicep",
         DisplayName = "HandlesPathsCorrectly: separate drives")]
+    [DataRow(
+        //asdfg
+        "c:/my root/my project/my main.bicep",
+        "c:/Users/username/.bicep/br/mcr.microsoft.com/bicep$storage$storage-account/1.0.1$/main.json",
+        "my main.bicep",
+        "<cache>/mcr.microsoft.com/bicep$storage$storage-account/1.0.1$/main.json",
+        "_cache_/mcr.microsoft.com/bicep$storage$storage-account/1.0.1$/main.json",
+        DisplayName = "HandlesPathsCorrectly: external module (in cache)")]
+    [DataRow(
+        "c:/my root/my project/my main.bicep",
+        "c:/my root/my [&] mainProject/my &[] main.bicep",
+        "my main.bicep",
+        "../my [&] mainProject/my &[] main.bicep",
+        "files/parent/my ___ mainProject/my ___ main.bicep",
+        DisplayName = "HandlesPathsCorrectly:  Characters to avoid")]
+    [DataRow(
+        "c:/my root/my project/my main.bicep",
+        "c:/my other root/אמא שלי/אבא שלי.bicep",
+        "my main.bicep",
+        "../../my other root/אמא שלי/אבא שלי.bicep",
+        "files/parent/parent/my other root/אמא שלי/אבא שלי.bicep",
+        DisplayName = "HandlesPathsCorrectly:  Global characters")]*/
+    [DataTestMethod]
     public void HandlesPathsCorrectly(
-        string pathRelativeToMainBicepLocation,
-        string expecteArchivedUri,
-        string? expecteArchivePath = null)
+        string[] inputPaths,
+        string[] expectedPaths,
+        string[] expectedArchivePaths,
+        string? platform = null)
     {
-        string mainBicepPath = MockUnixSupport.Path("c:/my root/my project/my main.bicep");
-        expecteArchivePath ??= expecteArchivedUri;
+        if (platform == "linux" && Environment.OSVersion.Platform == PlatformID.Win32NT)
+        {
+            // skip
+            return;
+        }
 
-        Uri entrypointUri = DocumentUri.FromFileSystemPath(mainBicepPath).ToUriEncoded();
         var fs = new MockFileSystem();
 
-        var mainBicepFolder = new Uri(Path.GetDirectoryName(mainBicepPath)! + "/", UriKind.Absolute);
-        fs.AddDirectory(mainBicepFolder.LocalPath);
+        var entrypointPath = inputPaths[0];
 
-        var mainBicep = CreateSourceFile(fs, mainBicepFolder, Path.GetFileName(mainBicepPath), SourceArchive.SourceKind_Bicep, MainDotBicepSource);
-        var testFile = CreateSourceFile(fs, mainBicepFolder, pathRelativeToMainBicepLocation, SourceArchive.SourceKind_Bicep, SecondaryDotBicepSource);
+        var rootBicepFolder = new Uri(Path.GetDirectoryName(entrypointPath)! + "/", UriKind.Absolute);
+        fs.AddDirectory(rootBicepFolder.LocalPath);
 
-        using var stream = SourceArchive.PackSourcesIntoStream(mainBicep.FileUri, mainBicep, testFile);
+        var files = inputPaths.Select(path => CreateSourceFile(fs, rootBicepFolder, path, SourceArchive.SourceKind_Bicep, $"// {path}")).ToArray();
 
-        SourceArchive? sourceArchive = SourceArchive.UnpackFromStream(stream).TryUnwrap();
+        using var stream = SourceArchive.PackSourcesIntoStream(files[0].FileUri, files);
+        SourceArchive sourceArchive = SourceArchive.UnpackFromStream(stream).UnwrapOrThrow();
 
-        sourceArchive.Should().NotBeNull();
-        sourceArchive!.EntrypointRelativePath.Should().Be("my main.bicep");
+        sourceArchive.EntrypointRelativePath.Should().Be(expectedPaths[0], "entrypoint path should be correct");
 
-        var archivedTestFile = sourceArchive.SourceFiles.Single(f => f.Path != "my main.bicep");
-        archivedTestFile.Path.Should().Be(expecteArchivedUri);
-        archivedTestFile.ArchivePath.Should().Be(expecteArchivePath);
-        archivedTestFile.Contents.Should().Be(SecondaryDotBicepSource);
+        sourceArchive.EntrypointRelativePath.Should().NotContain("username", "shouldn't have username in source paths");
+        foreach (var file in sourceArchive.SourceFiles)
+        {
+            file.Path.Should().NotContain("username", "shouldn't have username in source paths");
+            file.ArchivePath.Should().NotContain("username", "shouldn't have username in source paths");
+        }
+
+        for (int i = 0; i < inputPaths.Length; ++i)
+        {
+            var archivedTestFile = sourceArchive.SourceFiles.Single(f => f.Contents.Equals(files[i].GetOriginalSource()));
+            archivedTestFile.Path.Should().Be(expectedPaths[i]);
+            archivedTestFile.ArchivePath.Should().Be(expectedArchivePaths[i]);
+        }
     }
+
+    [DataRow(
+        "c:/my root/my project/my_.bicep", "my_.bicep", "files/my_.bicep",
+        "c:/my root/my project/my&.bicep", "my&.bicep", "files/my_.bicep(2)",
+        "c:/my root/my project/my[.bicep", "my[.bicep", "files/my_.bicep(3)",
+        DisplayName = "DuplicateNamesAfterMunging_ShouldHaveSeparateEntries: &")]
+    [DataRow(
+        "c:\\my root\\my project\\123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789\\a.txt",
+            "123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789/a.txt",
+            "files/123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123__path_too_long__.txt",
+        "c:\\my root\\my project\\123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789\\b.txt",
+            "123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789/b.txt",
+            "files/123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123__path_too_long__.txt(2)",
+        "c:\\my root\\my project\\123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 extra characters here that get truncated\\a.txt",
+            "123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 extra characters here that get truncated/a.txt",
+            "files/123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123456789 123__path_too_long__.txt(3)",
+        DisplayName = "DuplicateNamesAfterMunging_ShouldHaveSeparateEntries: truncated")]
+    [DataRow(
+        "c:/my root/my.bicep", "my.bicep", "files/my.bicep",
+        "d:/my root/my project/parent/m&.bicep", "<root2>/m&.bicep", "files/_root2_/m_.bicep",
+        "d:/my root/my project/parent/m[.bicep", "<root2>/m[.bicep", "files/_root2_/m_.bicep(2)",
+        DisplayName = "DuplicateNamesAfterMunging_ShouldHaveSeparateEntries: different drives")]
+    [DataTestMethod]
+    public void DuplicateNamesAfterMunging_ShouldHaveSeparateEntries(
+        string inputBicepPath1, string expectedPath1, string expectedArchivePath1, // 1st bicep path, plus its expected path and archive path
+        string inputBicepPath2, string expectedPath2, string expectedArchivePath2, // 2st bicep path, plus its expected path and archive path
+        string? inputBicepPath3 = null, string? expectedPath3 = null, string? expectedArchivePath3 = null  // 3rd bicep path, plus its expected path and archive path
+    )
+    {
+        string entrypointPath = "c:/my root/my project/my entrypoint.bicep";
+        var fs = new MockFileSystem();
+
+        var rootBicepFolder = new Uri(Path.GetDirectoryName(entrypointPath)! + "/", UriKind.Absolute);
+        fs.AddDirectory(rootBicepFolder.LocalPath);
+
+        var entrypointFile = CreateSourceFile(fs, rootBicepFolder, Path.GetFileName(entrypointPath), SourceArchive.SourceKind_Bicep, MainDotBicepSource);
+        var sutFile1 = CreateSourceFile(fs, rootBicepFolder, inputBicepPath1, SourceArchive.SourceKind_Bicep, SecondaryDotBicepSource);
+        var sutFile2 = CreateSourceFile(fs, rootBicepFolder, inputBicepPath2, SourceArchive.SourceKind_Bicep, SecondaryDotBicepSource);
+        var sutFile3 = inputBicepPath3 is null ? null : CreateSourceFile(fs, rootBicepFolder, inputBicepPath3, SourceArchive.SourceKind_Bicep, SecondaryDotBicepSource);
+
+        using var stream = sutFile3 is null ?
+            SourceArchive.PackSourcesIntoStream(entrypointFile.FileUri, entrypointFile, sutFile1, sutFile2) :
+            SourceArchive.PackSourcesIntoStream(entrypointFile.FileUri, entrypointFile, sutFile1, sutFile2, sutFile3);
+
+        SourceArchive sourceArchive = SourceArchive.UnpackFromStream(stream).UnwrapOrThrow();
+
+        var archivedFile1 = sourceArchive.SourceFiles.SingleOrDefault(f => f.Path == expectedPath1);
+        var archivedFile2 = sourceArchive.SourceFiles.SingleOrDefault(f => f.Path == expectedPath2);
+        var archivedFile3 = sourceArchive.SourceFiles.SingleOrDefault(f => f.Path == expectedPath3);
+
+        archivedFile1.Should().NotBeNull($"Couldn't find source file \"{inputBicepPath1}\" in archive");
+        archivedFile2.Should().NotBeNull($"Couldn't find source file \"{inputBicepPath2}\" in archive");
+        if (inputBicepPath3 is not null)
+        {
+            archivedFile3.Should().NotBeNull($"Couldn't find source file \"{inputBicepPath3}\" in archive");
+        }
+
+        archivedFile1!.Path.Should().Be(expectedPath1);
+        archivedFile1.ArchivePath.Should().Be(expectedArchivePath1);
+
+        archivedFile2!.Path.Should().Be(expectedPath2);
+        archivedFile2.ArchivePath.Should().Be(expectedArchivePath2);
+
+        if (inputBicepPath3 is not null)
+        {
+            archivedFile3!.Path.Should().Be(expectedPath3);
+            archivedFile3.ArchivePath.Should().Be(expectedArchivePath3);
+        }
+    }
+
+    //asdfg test duplicates after munge
+    //asdfg including real folder starts with name "parent"
 
     [TestMethod]
     public void GetSourceFiles_ForwardsCompat_ShouldIgnoreUnrecognizedPropertiesInMetadata()
     {
         var zip = CreateGzippedTarredFileStream(
             (
-                "__metadata.json",
+                "metadata.json",
                 @"
                 {
+                  ""metadataVersion"": 1,
                   ""entryPoint"": ""file:///main.bicep"",
                   ""I am an unrecognized property name"": {},
+                  ""bicepVersion"": ""0.18.19"",
                   ""sourceFiles"": [
                     {
                       ""path"": ""file:///main.bicep"",
-                      ""archivePath"": ""main.bicep"",
+                      ""archivePath"": ""files/main.bicep"",
                       ""kind"": ""bicep"",
                       ""I am also recognition challenged"": ""Hi, Mom!""
                     }
@@ -308,12 +540,12 @@ public class SourceArchiveTests
                 }"
             ),
             (
-                "main.bicep",
+                "files/main.bicep",
                 @"bicep contents"
             )
         );
 
-        var sut = SourceArchive.UnpackFromStream(zip).Unwrap();
+        var sut = SourceArchive.UnpackFromStream(zip).UnwrapOrThrow();
         var file = sut.SourceFiles.Single();
 
         file.Kind.Should().Be("bicep");
@@ -328,31 +560,33 @@ public class SourceArchiveTests
         // OLD FILE VERSIONS WITH MINIMAL DATA
         var zip = CreateGzippedTarredFileStream(
             (
-                "__metadata.json",
+                "metadata.json",
                 @"
                 {
-                  ""entryPoint"": ""file:///main.bicep"",
+                  ""entryPoint"": ""main.bicep"",
+                  ""bicepVersion"": ""0.1.2"",
+                  ""metadataVersion"": 1,
                   ""sourceFiles"": [
                     {
-                      ""path"": ""file:///main.bicep"",
-                      ""archivePath"": ""main.bicep"",
+                      ""path"": ""main.bicep"",
+                      ""archivePath"": ""files/main.bicep"",
                       ""kind"": ""bicep""
                     }
                   ]
                 }"
             ),
             (
-                "main.bicep",
-                @"bicep contents"
+                "files/main.bicep",
+                "bicep contents"
             )
         );
 
-        var sut = SourceArchive.UnpackFromStream(zip).Unwrap();
+        var sut = SourceArchive.UnpackFromStream(zip).UnwrapOrThrow();
         var file = sut.SourceFiles.Single();
 
         file.Kind.Should().Be("bicep");
         file.Contents.Should().Be("bicep contents");
-        file.Path.Should().Contain("main.bicep");
+        file.Path.Should().Be("main.bicep");
     }
 
     [TestMethod]
@@ -360,19 +594,21 @@ public class SourceArchiveTests
     {
         var zip = CreateGzippedTarredFileStream(
             (
-                "__metadata.json",
+                "metadata.json",
                 @"
                 {
-                  ""entryPoint"": ""file:///main.bicep"",
+                  ""entryPoint"": ""main.bicep"",
                   ""I am an unrecognized property name"": {},
                   ""sourceFiles"": [
                     {
-                      ""path"": ""file:///main.bicep"",
-                      ""archivePath"": ""main.bicep"",
+                      ""path"": ""main.bicep"",
+                      ""archivePath"": ""files/main.bicep"",
                       ""kind"": ""bicep"",
                       ""I am also recognition challenged"": ""Hi, Mom!""
                     }
-                  ]
+                  ],
+                  ""bicepVersion"": ""0.1.2"",
+                  ""metadataVersion"": 1
                 }"
             ),
             (
@@ -380,12 +616,16 @@ public class SourceArchiveTests
                 @"unmentioned contents"
             ),
             (
-                "main.bicep",
+                "files/Nor am I.bicep",
+                @"unmentioned contents 2"
+            ),
+            (
+                "files/main.bicep",
                 @"bicep contents"
             )
         );
 
-        var sut = SourceArchive.UnpackFromStream(zip).Unwrap();
+        var sut = SourceArchive.UnpackFromStream(zip).UnwrapOrThrow();
         var file = sut.SourceFiles.Single();
 
         file.Kind.Should().Be("bicep");
@@ -398,7 +638,7 @@ public class SourceArchiveTests
     {
         var zip = CreateGzippedTarredFileStream(
             (
-                "__metadata.json",
+                "metadata.json",
                 @"
                 {
                   ""entryPoint"": ""file:///main.bicep"",
@@ -430,7 +670,7 @@ public class SourceArchiveTests
     {
         var zip = CreateGzippedTarredFileStream(
             (
-                "__metadata.json",
+                "metadata.json",
                 @"
                 {
                   ""entryPoint"": ""file:///main.bicep"",

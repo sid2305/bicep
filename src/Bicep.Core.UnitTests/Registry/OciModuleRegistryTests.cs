@@ -689,8 +689,7 @@ namespace Bicep.Core.UnitTests.Registry
 
       if (sources is { })
       {
-        actualSourceResult.TryUnwrap().Should().NotBeNull();
-        actualSourceResult.Unwrap().Should().BeEquivalentTo(SourceArchive.UnpackFromStream(sources.ToStream()).Unwrap());
+        actualSourceResult.UnwrapOrThrow().Should().BeEquivalentTo(SourceArchive.UnpackFromStream(sources.ToStream()).UnwrapOrThrow());
       }
       else
       {

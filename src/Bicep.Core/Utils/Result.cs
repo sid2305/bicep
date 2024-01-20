@@ -45,7 +45,7 @@ public class Result<TSuccess, TError>
     /// This should only be called if you've already verified that the result is successful.
     /// </summary>
     public TSuccess Unwrap()
-        => TryUnwrap() ?? throw new InvalidOperationException("Cannot unwrap a failed result.");
+        => TryUnwrap() ?? throw new InvalidOperationException("Internal error: Cannot unwrap a failed result.");
 
     public TSuccess? TryUnwrap()
         => successResult;
