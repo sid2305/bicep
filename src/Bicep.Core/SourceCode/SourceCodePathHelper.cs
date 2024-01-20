@@ -40,17 +40,27 @@ namespace Bicep.Core.SourceCode
         /// </returns>
         /// </summary>
         /// <example>
+        /// 
         ///   c:/users/username/repos/deployment/src/main.bicep
         ///   c:/users/username/repos/deployment/src/modules/module1.bicep
         ///   c:/users/username/repos/deployment/src/modules/module2.bicep
         ///   c:/users/username/repos/deployment/shared/shared1.bicep
         ///   d:/bicepcacheroot/br/example.azurecr.io/test$provider$http/1.2.3$/main.json
         ///
-        /// returns these roots:  asdfg verify and show map
+        /// the calculed roots are:
         /// 
         ///   c:/users/username/repos/deployment/src
         ///   c:/users/username/repos/deployment/shared
         ///   d:/bicepcacheroot/br/example.azurecr.io/test$provider$http/1.2.3$
+        ///
+        /// so the returned map is:
+        ///
+        ///   c:/users/username/repos/deployment/src/main.bicep            => c:/users/username/repos/deployment/src
+        ///   c:/users/username/repos/deployment/src/modules/module1.bicep => c:/users/username/repos/deployment/src
+        ///   c:/users/username/repos/deployment/src/modules/module2.bicep => c:/users/username/repos/deployment/src
+        ///   c:/users/username/repos/deployment/shared/shared1.bicep      => c:/users/username/repos/deployment/shared
+        ///   d:/bicepcacheroot/br/example.azurecr.io/test$provider$http/1.2.3$/main.json
+        ///                                                                => d:/bicepcacheroot/br/example.azurecr.io/test$provider$http/1.2.3$
         /// </example>
         public static IDictionary<string, string> GetUniquePathRoots(string[] filePaths)
         {
@@ -66,7 +76,7 @@ namespace Bicep.Core.SourceCode
 
             string[] distinctFolders = filePaths.Select(path =>
             {
-                if (/*asdfg? !Path.IsPathFullyQualified(path) || */Path.GetDirectoryName(path) is not string folder)
+                if (!Path.IsPathFullyQualified(path) || Path.GetDirectoryName(path) is not string folder)
                 {
                     throw new ArgumentException($"Path '{path}' should be a valid fully qualified path");
                 }

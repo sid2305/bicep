@@ -165,78 +165,84 @@ public class SourceArchiveTests
             });
     }
 
+    //asdfg do a compiled link source archive test
+
     [TestMethod]
     public void CanPackAndUnpackDocumentLinks()
     {
         Uri projectFolder = new("file:///my project/my sources/", UriKind.Absolute);
         var fs = new MockFileSystem();
         fs.AddDirectory(projectFolder.LocalPath);
-
-        var mainBicep = CreateSourceFile(fs, projectFolder, "main.bicep", SourceArchive.SourceKind_Bicep, MainDotBicepSource);
+//asdfg weird chars, multiple roots
+        var mainBicep = CreateSourceFile(fs, projectFolder, "main#.bicep", SourceArchive.SourceKind_Bicep, MainDotBicepSource);
         var mainJson = CreateSourceFile(fs, projectFolder, "main.json", SourceArchive.SourceKind_ArmTemplate, MainDotJsonSource);
         var standaloneJson = CreateSourceFile(fs, projectFolder, "standalone.json", SourceArchive.SourceKind_ArmTemplate, StandaloneJsonSource);
         var templateSpecMainJson = CreateSourceFile(fs, projectFolder, "Main template.json", SourceArchive.SourceKind_TemplateSpec, TemplateSpecJsonSource);
-        var localModuleJson = CreateSourceFile(fs, projectFolder, "localModule.json", SourceArchive.SourceKind_ArmTemplate, LocalModuleDotJsonSource);
+        var localModuleJson = CreateSourceFile(fs, projectFolder, "modules/localJsonModule.json", SourceArchive.SourceKind_ArmTemplate, LocalModuleDotJsonSource);
+        var localModuleBicep = CreateSourceFile(fs, projectFolder, "modules/localBicepModule.bicep", SourceArchive.SourceKind_ArmTemplate, LocalModuleDotJsonSource);
 
-        var dict = new Dictionary<Uri, SourceCodeDocumentUriLink[]>()
+        var linksInput = new Dictionary<Uri, SourceCodeDocumentUriLink[]>()
         {
             {
-                new Uri("file:///my project/my sources/main.bicep", UriKind.Absolute),
+                new Uri("file:///my project/my sources/main#.bicep", UriKind.Absolute),
                 new SourceCodeDocumentUriLink[]
                 {
-                    new SourceCodeDocumentUriLink(new SourceCodeRange(1, 2, 1, 3), new Uri("file:///my project/my sources/modules/module1.bicep", UriKind.Absolute)),
+                    new SourceCodeDocumentUriLink(new SourceCodeRange(1, 2, 1, 3), new Uri("file:///my project/my sources/modules/localJsonModule.json", UriKind.Absolute)),
+                    new SourceCodeDocumentUriLink(new SourceCodeRange(11, 2, 11, 3), new Uri("file:///my project/my sources/modules/localBicepModule.bicep", UriKind.Absolute)),
                 }
             },
             {
-                new Uri("file:///my project/my sources/modules/module1.bicep", UriKind.Absolute),
+                new Uri("file:///my project/my sources/modules/localBicepModule.bicep", UriKind.Absolute),
                 new SourceCodeDocumentUriLink[]
                 {
-                    new SourceCodeDocumentUriLink(new SourceCodeRange(123, 124, 234, 235), new Uri("file:///my project/my sources/main.bicep", UriKind.Absolute)),
-                    new SourceCodeDocumentUriLink(new SourceCodeRange(234, 235, 345, 346), new Uri("file:///my project/my sources/remote/main.json", UriKind.Absolute)),
-                    new SourceCodeDocumentUriLink(new SourceCodeRange(123, 456, 234, 567), new Uri("file:///my project/my sources/main.bicep", UriKind.Absolute)),
+                    new SourceCodeDocumentUriLink(new SourceCodeRange(123, 124, 234, 235), new Uri("file:///my project/my sources/main#.bicep", UriKind.Absolute)),
+                    new SourceCodeDocumentUriLink(new SourceCodeRange(234, 235, 345, 346), new Uri("file:///my project/my sources/main.json", UriKind.Absolute)),
+                    new SourceCodeDocumentUriLink(new SourceCodeRange(123, 456, 234, 567), new Uri("file:///my project/my sources/main#.bicep", UriKind.Absolute)),
+                    new SourceCodeDocumentUriLink(new SourceCodeRange(345, 2, 345, 3), new Uri("file:///my project/my sources/modules/localJsonModule.json", UriKind.Absolute)),
                 }
             },
         };
-
-        using var stream = SourceArchive.PackSourcesIntoStream(mainBicep.FileUri, dict, mainBicep, mainJson, standaloneJson, templateSpecMainJson, localModuleJson);
+        using var stream = SourceArchive.PackSourcesIntoStream(mainBicep.FileUri, linksInput, mainBicep, mainJson, standaloneJson, templateSpecMainJson, localModuleJson, localModuleBicep);
         stream.Length.Should().BeGreaterThan(0);
 
         SourceArchive? sourceArchive = SourceArchive.UnpackFromStream(stream).TryUnwrap();
         sourceArchive.Should().NotBeNull();
 
-        var links = sourceArchive!.DocumentLinks;
+        var archivedLinks = sourceArchive!.DocumentLinks;
 
         var expected = new Dictionary<string, SourceCodeDocumentPathLink[]>()
         {
             {
-                "main.bicep",
+                "main#.bicep",
                 new SourceCodeDocumentPathLink[]
                 {
-                    new SourceCodeDocumentPathLink(new SourceCodeRange(1, 2, 1, 3), "modules/module1.bicep"),
+                    new SourceCodeDocumentPathLink(new SourceCodeRange(1, 2, 1, 3), "modules/localJsonModule.json"),
+                    new SourceCodeDocumentPathLink(new SourceCodeRange(11, 2, 11, 3), "modules/localBicepModule.bicep"),
                 }
             },
             {
-                "modules/module1.bicep",
+                "modules/localBicepModule.bicep",
                 new SourceCodeDocumentPathLink[]
                 {
-                    new SourceCodeDocumentPathLink(new SourceCodeRange(123, 124, 234, 235), "main.bicep"),
-                    new SourceCodeDocumentPathLink(new SourceCodeRange(234, 235, 345, 346), "remote/main.json"),
+                    new SourceCodeDocumentPathLink(new SourceCodeRange(123, 124, 234, 235), "main#.bicep"),
+                    new SourceCodeDocumentPathLink(new SourceCodeRange(234, 235, 345, 346), "main.json"),
                     new SourceCodeDocumentPathLink(new SourceCodeRange(123, 456, 234, 567), "main.bicep"),
+                    new SourceCodeDocumentPathLink(new SourceCodeRange(345, 2, 345, 3), "modules/localJsonModule.json"),
                 }
             },
         };
 
-        links.Should().BeEquivalentTo(expected);
+        archivedLinks.Should().BeEquivalentTo(expected);
     }
 
     [DataRow(
         new string[] { "c:/my root/my project/my main.bicep", "c:/my other.bicep" },
-        new string[] { "my root/my project/my main.bicep", "my other.bicep" },
+        new string[] { "c:/my root/my project/my main.bicep", "my other.bicep" },
         new string[] { "files/my root/my project/my main.bicep", "files/my other.bicep" },
         DisplayName = "HandlesPathsCorrectly: spaces")]
     [DataRow(
         new string[] { "c:\\my root\\my project\\my main.bicep", "c:/my other.bicep" },
-        new string[] { "my root/my project/my main.bicep", "my other.bicep" },
+        new string[] { "c:\\my root/my project/my main.bicep", "my other.bicep" },
         new string[] { "files/my root/my project/my main.bicep", "files/my other.bicep" },
         DisplayName = "HandlesPathsCorrectly: backslashes")]
     /*[DataRow(

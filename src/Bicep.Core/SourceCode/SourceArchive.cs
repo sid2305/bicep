@@ -173,7 +173,9 @@ namespace Bicep.Core.SourceCode
                     var paths = sourceFiles.Select(f => GetPath(f.FileUri)).ToArray();
                     var pathToRootMap = SourceCodePathHelper.GetUniquePathRoots(paths);
                     var entrypointRoot = pathToRootMap[GetPath(entrypointFileUri)];
-                    var rootToRootNameMap = NameRoots(pathToRootMap, entrypointRoot);
+                    var rootToRootNewNameMap = NameRoots(pathToRootMap, entrypointRoot);
+
+                    var sourceUriToRelativePathMap = new Dictionary<Uri, string>();
 
                     foreach (var file in sourceFiles)
                     {
@@ -188,7 +190,7 @@ namespace Bicep.Core.SourceCode
 
                         var path = GetPath(file.FileUri);
                         var root = pathToRootMap[path];
-                        var rootName = rootToRootNameMap[root];
+                        var rootName = rootToRootNewNameMap[root];
                         var (relativePath, archivePath) = CalculateRelativeAndArchivePaths(path, root, rootName);
 
                         if (filesMetadata.Any(f => f.Path == path))
@@ -211,6 +213,8 @@ namespace Bicep.Core.SourceCode
 
                             entryPointPath = relativePath;
                         }
+
+                        sourceUriToRelativePathMap.Add(file.FileUri, relativePath);
                     }
 
                     if (entryPointPath is null)
@@ -218,75 +222,78 @@ namespace Bicep.Core.SourceCode
                         throw new ArgumentException($"{nameof(SourceArchive)}.{nameof(PackSourcesIntoStream)}: No source file with entrypoint \"{entrypointFileUri.AbsoluteUri}\" was passed in.");
                     }
 
-                    // Add the metadata file
-                    var metadataContents = CreateMetadataFileContents(entryPointPath, filesMetadata, documentLinks);
+                    // Convert links
+                    var pathBasedLinks = UriDocumentLinksToPathBasedLinks(sourceUriToRelativePathMap, documentLinks);
+
+                    // Create and add the metadata file
+                    var metadataContents = CreateMetadataFileContents(entryPointPath, filesMetadata, pathBasedLinks);
                     WriteNewFileEntry(tarWriter, MetadataFileName, metadataContents);
                 }
             }
 
             stream.Seek(0, SeekOrigin.Begin);
             return stream;
+        }
 
-            (string relativePath, string archivePath) CalculateRelativeAndArchivePaths(string path, string root, string rootName)
+        private static (string relativePath, string archivePath) CalculateRelativeAndArchivePaths(string path, string root, string rootName)
+        {
+            // Replace root of the path with root's "friendly" name to help avoid unintended
+            //   disclosure of user paths
+            var relativePath = Path.GetRelativePath(root, path);
+            Debug.Assert(!relativePath.StartsWith("../"), $"All paths should be under one of the roots");
+            relativePath = SourceCodePathHelper.Normalize($"{rootName}{relativePath}");
+
+            // Handle illegal/problematic file characters in the path we use inside the archive
+            string archivePath = relativePath;
+            foreach (char ch in PathCharsToAvoid)
             {
-                // Replace root of the path with root's "friendly" name to help avoid unintended
-                //   disclosure of user paths
-                var relativePath = Path.GetRelativePath(root, path);
-                Debug.Assert(!relativePath.StartsWith("../"), $"All paths should be under one of the roots");
-                relativePath = SourceCodePathHelper.Normalize($"{rootName}{relativePath}");
-
-                // Handle illegal/problematic file characters in the path we use inside the archive
-                string archivePath = relativePath;
-                foreach (char ch in PathCharsToAvoid)
-                {
-                    archivePath = archivePath.Replace(ch, '_');
-                }
-
-                // Place all sources files under "files/" in the archive
-                archivePath = Path.Join(FilesFolderName, archivePath);
-
-                // Shorten if needed
-                archivePath = SourceCodePathHelper.Shorten(archivePath, MaxArchivePathLength);
-
-                return (SourceCodePathHelper.Normalize(relativePath), SourceCodePathHelper.Normalize(archivePath));
+                archivePath = archivePath.Replace(ch, '_');
             }
 
-            string GetPath(Uri uri)
+            // Place all sources files under "files/" in the archive
+            archivePath = Path.Join(FilesFolderName, archivePath);
+
+            // Shorten if needed
+            archivePath = SourceCodePathHelper.Shorten(archivePath, MaxArchivePathLength);
+
+            return (SourceCodePathHelper.Normalize(relativePath), SourceCodePathHelper.Normalize(archivePath));
+        }
+
+        private static string GetPath(Uri uri)
+        {
+            return SourceCodePathHelper.Normalize(Uri.UnescapeDataString(uri.AbsolutePath));
+        }
+
+        private static string UniquifyArchivePath(IList<SourceFileInfoEntry> filesMetadata, string archivePath)
+        {
+            int suffix = 1;
+            string tryPath = archivePath;
+
+            while (filesMetadata.Any(f => f.ArchivePath == tryPath))
             {
-                return SourceCodePathHelper.Normalize(Uri.UnescapeDataString(uri.AbsolutePath));
+                suffix += 1;
+                tryPath = $"{archivePath}({suffix})";
             }
 
-            string UniquifyArchivePath(IList<SourceFileInfoEntry> filesMetadata, string archivePath)
+            return tryPath;
+        }
+
+        private static Dictionary<string, string> NameRoots(IDictionary<string, string> rootsMap, string entrypointRoot)
+        {
+            var rootNamesMap = new Dictionary<string, string>();
+
+            // Entrypoint path is always as the top of the archive path hierarchy
+            rootNamesMap[entrypointRoot] = "";
+
+            // Remaining roots are "<root2>", "<root3>", etc.
+            int i = 2;
+            foreach (var root in rootsMap.Values.Distinct().Where(r => r != entrypointRoot))
             {
-                int suffix = 1;
-                string tryPath = archivePath;
-
-                while (filesMetadata.Any(f => f.ArchivePath == tryPath))
-                {
-                    suffix += 1;
-                    tryPath = $"{archivePath}({suffix})";
-                }
-
-                return tryPath;
+                var rootName = $"<root{i}>/";
+                rootNamesMap.Add(root, rootName);
             }
 
-            Dictionary<string, string> NameRoots(IDictionary<string, string> rootsMap, string entrypointRoot)
-            {
-                var rootNamesMap = new Dictionary<string, string>();
-
-                // Entrypoint path is always as the top of the archive path hierarchy
-                rootNamesMap[entrypointRoot] = "";
-
-                // Remaining roots are "<root2>", "<root3>", etc.
-                int i = 2;
-                foreach (var root in rootsMap.Values.Distinct().Where(r => r != entrypointRoot))
-                {
-                    var rootName = $"<root{i}>/";
-                    rootNamesMap.Add(root, rootName);
-                }
-
-                return rootNamesMap;
-            }
+            return rootNamesMap;
         }
 
         public SourceFileInfo FindExpectedSourceFile(string path)
@@ -314,7 +321,7 @@ namespace Bicep.Core.SourceCode
             return null;
         }
 
-        private string FindRoot(string[] roots, string path)
+        private string FindRootForFile(string[] roots, string path)
         {
             foreach (var root in roots)
             {
@@ -327,12 +334,13 @@ namespace Bicep.Core.SourceCode
             throw new ArgumentException($"Could not find a root for path \"{path}\"");
         }
 
-        private static string CalculateRelativeFilePath(Uri baseFolderUri, Uri uri)
-        {
-            Uri relativeUri = baseFolderUri.MakeRelativeUri(uri);
-            var relativeLocation = Uri.UnescapeDataString(relativeUri.OriginalString);
-            return relativeLocation;
-        }
+        //asdfg
+        //private static string CalculateRelativeFilePath(string baseFolderPath, string filePath)
+        //{
+        //    Uri relativeUri = Path.GetRelativePath(baseFolderPath, filePath);
+        //    var relativeLocation = Uri.UnescapeDataString(relativeUri.OriginalString);
+        //    return relativeLocation;
+        //}
 
         private SourceArchive(Stream stream)
         {
@@ -369,30 +377,32 @@ namespace Bicep.Core.SourceCode
         private static string CreateMetadataFileContents(
             string entrypointPath,
             IEnumerable<SourceFileInfoEntry> files,
-            IReadOnlyDictionary<Uri, SourceCodeDocumentUriLink[]>? documentLinks
+            IReadOnlyDictionary<string, SourceCodeDocumentPathLink[]>? documentLinks
         )
         {
-            var metadata = new ArchiveMetadata(CurrentMetadataVersion, CurrentBicepVersion, entrypointPath, files);
+            var metadata = new ArchiveMetadata(CurrentMetadataVersion, CurrentBicepVersion, entrypointPath, files, documentLinks);
             return JsonSerializer.Serialize(metadata, MetadataSerializationContext.Default.ArchiveMetadata);
         }
 
         private static IReadOnlyDictionary<string, SourceCodeDocumentPathLink[]>? UriDocumentLinksToPathBasedLinks(
-            Uri baseFolderUri,
+            IReadOnlyDictionary<Uri, string> sourceUriToRelativePathMap,
             IReadOnlyDictionary<Uri, SourceCodeDocumentUriLink[]>? uriBasedDocumentLinks
         )
         {
             return uriBasedDocumentLinks?.Select(
                 x => new KeyValuePair<string, SourceCodeDocumentPathLink[]>(
-                    CalculateRelativeFilePath(baseFolderUri, x.Key),
-                    x.Value.Select(link => DocumentPathLinkFromUriLink(baseFolderUri, link)).ToArray()
+                    sourceUriToRelativePathMap[x.Key],
+                    x.Value.Select(link => DocumentPathLinkFromUriLink(sourceUriToRelativePathMap, link)).ToArray()
                 )).ToImmutableDictionary();
         }
 
-        private static SourceCodeDocumentPathLink DocumentPathLinkFromUriLink(Uri baseFolderUri, SourceCodeDocumentUriLink uriBasedLink)
+        private static SourceCodeDocumentPathLink DocumentPathLinkFromUriLink(
+            IReadOnlyDictionary<Uri, string> sourceUriToRelativePathMap,
+            SourceCodeDocumentUriLink uriBasedLink)
         {
             return new SourceCodeDocumentPathLink(
                 uriBasedLink.Range,
-                CalculateRelativeFilePath(baseFolderUri, uriBasedLink.Target));
+                sourceUriToRelativePathMap[uriBasedLink.Target]);
         }
 
         private static void WriteNewFileEntry(TarWriter tarWriter, string archivePath, string contents)
