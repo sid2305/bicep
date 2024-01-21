@@ -60,7 +60,7 @@ namespace Bicep.Core.SourceCode
 
         private static readonly char[] PathCharsToAvoid = Path.GetInvalidFileNameChars()
         .Union(Path.GetInvalidPathChars())
-        .Union(new char[] { '"', '*', ':', '&', '<', '>', '?', '\\', '/', '|', '+', '[', ']' })
+        .Union(new char[] { '"', '*', ':', '&', '<', '>', '?', '\\', '/', '|', '+', '[', ']', '#' })
         .Where(ch => ch != '/')
         .ToArray();
 
@@ -241,7 +241,7 @@ namespace Bicep.Core.SourceCode
             //   disclosure of user paths
             var relativePath = Path.GetRelativePath(root, path);
             Debug.Assert(!relativePath.StartsWith("../"), $"All paths should be under one of the roots");
-            relativePath = SourceCodePathHelper.Normalize($"{rootName}{relativePath}");
+            relativePath = SourceCodePathHelper.NormalizeSlashes($"{rootName}{relativePath}");
 
             // Handle illegal/problematic file characters in the path we use inside the archive
             string archivePath = relativePath;
@@ -256,12 +256,12 @@ namespace Bicep.Core.SourceCode
             // Shorten if needed
             archivePath = SourceCodePathHelper.Shorten(archivePath, MaxArchivePathLength);
 
-            return (SourceCodePathHelper.Normalize(relativePath), SourceCodePathHelper.Normalize(archivePath));
+            return (SourceCodePathHelper.NormalizeSlashes(relativePath), SourceCodePathHelper.NormalizeSlashes(archivePath));
         }
 
         private static string GetPath(Uri uri)
         {
-            return SourceCodePathHelper.Normalize(Uri.UnescapeDataString(uri.AbsolutePath));
+            return SourceCodePathHelper.NormalizeSlashes(Uri.UnescapeDataString(uri.AbsolutePath));
         }
 
         private static string UniquifyArchivePath(IList<SourceFileInfoEntry> filesMetadata, string archivePath)
@@ -291,6 +291,7 @@ namespace Bicep.Core.SourceCode
             {
                 var rootName = $"<root{i}>/";
                 rootNamesMap.Add(root, rootName);
+                ++i;
             }
 
             return rootNamesMap;

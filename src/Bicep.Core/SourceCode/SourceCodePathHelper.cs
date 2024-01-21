@@ -83,7 +83,7 @@ namespace Bicep.Core.SourceCode
 
                 return folder;
             }).
-            Select(Normalize)
+            Select(NormalizeSlashes)
             .Distinct()
             .ToArray();
 
@@ -103,20 +103,22 @@ namespace Bicep.Core.SourceCode
             return rootMapping.ToDictionary(pair => pair.filePath, pair => pair.matchingRoot);
         }
 
-        public static string Normalize(string path)//asdfg rename
+        public static string NormalizeSlashes(string path)
         {
             return path.Replace('\\', '/');
         }
 
-        private static bool IsDescendentOf(string folder, string possibleParentFolder) //asdfg rename
+        private static bool IsDescendentOf(string folder, string possibleParentFolder)
         {
             return folder != possibleParentFolder // asdfg insensitive?
                 && IsSameOrIsDescendentOf(folder, possibleParentFolder);
         }
 
-        private static bool IsSameOrIsDescendentOf(string folder, string possibleParentFolder) //asdfg rename
+        private static bool IsSameOrIsDescendentOf(string folder, string possibleParentFolder)
         {
-            return !Path.GetRelativePath(possibleParentFolder, folder).StartsWith("..")
+            var relativePath = NormalizeSlashes(Path.GetRelativePath(possibleParentFolder, folder));
+            return relativePath != ".."
+                && !relativePath.StartsWith("../")
                 && Path.GetPathRoot(folder) == Path.GetPathRoot(possibleParentFolder);
         }
     }
