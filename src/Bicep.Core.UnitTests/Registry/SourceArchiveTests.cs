@@ -292,93 +292,60 @@ public class SourceArchiveTests
         new string[] { "files/my main.bicep", "files/subfolder1/module1.bicep", "files/subfolder2/module2.bicep" },
         DisplayName = "HandlesPathsCorrectly: Two subfolders")]
     [DataRow(
-        new string[] { $"{ROOT}repos/bicep/my main.bicep", $"{ROOT}repos/bicep/..deployment../subfolder1/module1.bicep" },
-        new string[] { "my main.bicep", "..deployment../subfolder1/module1.bicep" },
-        new string[] { "files/my main.bicep", "files/..deployment../subfolder1/module1.bicep" },
-        DisplayName = "HandlesPathsCorrectly: .. in folder name")]
+        new string[] { $"{ROOT}repos/bicep/my main.bicep", $"{ROOT}repos/bicep/..deployment../subfolder1/..module1..bicep.." },
+        new string[] { "my main.bicep", "..deployment../subfolder1/..module1..bicep.." },
+        new string[] { "files/my main.bicep", "files/..deployment../subfolder1/..module1..bicep.." },
+        DisplayName = "HandlesPathsCorrectly: .. in names")]
     [DataRow(
         new string[] { $"{ROOT}my root/my project/my main bicep.bicep", $"{ROOT}my other root/my project/my other bicep.bicep" },
         new string[] { "my main bicep.bicep", "<root2>/my other bicep.bicep" },
         new string[] { "files/my main bicep.bicep", "files/_root2_/my other bicep.bicep" },
         DisplayName = "HandlesPathsCorrectly: no folders in common")]
-/*    [DataRow(
-        $"{ROOT}my root/my project/my main.bicep",
-        $"{ROOT}my root/my..project/..my other bicep.bicep",
-        "my main.bicep",
-        "../my..project/..my other bicep.bicep",
-        "files/parent/my..project/..my other bicep.bicep",
-        DisplayName = "HandlesPathsCorrectly: .. at beginning of filename")]
+#if WINDOWS_BUILD
     [DataRow(
-        $"{ROOT}my root/my project/my main.bicep",
-        $"{ROOT}my root/my..project/my other bicep.bicep..",
-        "my main.bicep",
-        "../my..project/my other bicep.bicep..",
-        "files/parent/my..project/my other bicep.bicep..",
-        DisplayName = "HandlesPathsCorrectly: .. at end of filename")]
-    [DataRow(
-        $"{ROOT}my root/my project/my main.bicep",
-        $"{ROOT}my root/my..project/my other..bicep.bicep",
-        "my main.bicep",
-        "../my..project/my other..bicep.bicep",
-        "files/parent/my..project/my other..bicep.bicep",
-        DisplayName = "HandlesPathsCorrectly: .. in middle of filename")]
-    [DataRow(
-        $"{ROOT}my root/my project/my main.bicep",
-        $"{ROOT}my root/my project/subfolder/my other bicep.bicep",
-        "my main.bicep",
-        "subfolder/my other bicep.bicep",
-        "files/subfolder/my other bicep.bicep",
-        DisplayName = "HandlesPathsCorrectly: rooted to drive: slashes")]
-    [DataRow(
-        "c:\\my root\\my project\\my main.bicep",
-        $"{ROOT}my root/my project/subfolder/my other bicep.bicep",
-        "my main.bicep",
-        "subfolder/my other bicep.bicep",
-        "files/subfolder/my other bicep.bicep",
-        DisplayName = "HandlesPathsCorrectly: rooted to drive: backslashes 1")]
-    [DataRow(
-        $"{ROOT}my root/my project/my main.bicep",
-        "c:\\my root\\my project\\subfolder\\my other bicep.bicep",
-        "my main.bicep",
-        "subfolder/my other bicep.bicep",
-        "files/subfolder/my other bicep.bicep",
-        DisplayName = "HandlesPathsCorrectly: rooted to drive: backslashes 2")]
-    [DataRow(
-        // This shouldn't ever happen, with the exception of when the cache root path is on another drive, because local module files must be relative to the referencing file.
-        $"{ROOT}my root/my project/my main.bicep",
-        "d:/my root/my project/my other bicep.bicep",
-        "my main.bicep",
-        "d:/my root/my project/my other bicep.bicep",
-        "files/d_/my root/my project/my other bicep.bicep",
+        // This shouldn't ever happen, with the exception of when the cache root path is on another drive, because local module
+        // files must be relative to the referencing file.
+        new string[] { "c:\\my root\\my project\\my main.bicep", "d:\\my root\\my project\\my other bicep.bicep" },
+        new string[] { "my main.bicep", "<root2>/my other bicep.bicep" },
+        new string[] { "filesmy main.bicep", "files/_root2_/my other bicep.bicep" },
         DisplayName = "HandlesPathsCorrectly: separate drives")]
+#endif
     [DataRow(
-        //asdfg
-        $"{ROOT}my root/my project/my main.bicep",
-        $"{ROOT}Users/username/.bicep/br/mcr.microsoft.com/bicep$storage$storage-account/1.0.1$/main.json",
-        "my main.bicep",
-        "<cache>/mcr.microsoft.com/bicep$storage$storage-account/1.0.1$/main.json",
-        "_cache_/mcr.microsoft.com/bicep$storage$storage-account/1.0.1$/main.json",
+        new string[] {
+            $"{ROOT}my root/my project/my main.bicep",
+            $"{ROOT}Users/username/.bicep/br/mcr.microsoft.com/bicep$storage$storage-account/1.0.1$/main.json" },
+        new string[] { "my main.bicep", "<cache>/mcr.microsoft.com/bicep$storage$storage-account/1.0.1$/main.json" },
+        new string[] { "files/my main.bicep", "files/_cache_/mcr.microsoft.com/bicep$storage$storage-account/1.0.1$/main.json" },
         DisplayName = "HandlesPathsCorrectly: external module (in cache)")]
     [DataRow(
-        $"{ROOT}my root/my project/my main.bicep",
-        $"{ROOT}my root/my [&] mainProject/my &[] main.bicep",
-        "my main.bicep",
-        "../my [&] mainProject/my &[] main.bicep",
-        "files/parent/my ___ mainProject/my ___ main.bicep",
+        new string[] {
+            $"{ROOT}my root/my project/my main.bicep",
+            $"{ROOT}Users/username/.bicep/br/mcr.microsoft.com/bicep$storage$storage-account/1.0.1$/main.json",
+            $"{ROOT}Users/username/.bicep/br/mcr.microsoft.com/bicep$storage$storage-account/1.0.2$/main.json",
+            $"{ROOT}Users/username/.bicep/br/mcr.microsoft.com/bicep$compute$virtual-machine/1.0.1$/main.json" },
+        new string[] {
+            "my main.bicep",
+            "<cache>/mcr.microsoft.com/bicep$storage$storage-account/1.0.1$/main.json",
+            "<cache>/mcr.microsoft.com/bicep$storage$storage-account/1.0.2$/main.json",
+            "<cache>/mcr.microsoft.com/bicep$compute$virtual-machine/1.0.1$/main.json",
+        },
+        DisplayName = "HandlesPathsCorrectly: multiple external modules (in cache)")]
+    [DataRow(
+        new string[] { $"{ROOT}my & root/my&main.bicep", $"{ROOT}my & root/my [&] mainProject/my &[] main.bicep" },
+        new string[] { "my&main.bicep", "my [&] mainProject/my &[] main.bicep" },
+        new string[] { "files/my_main.bicep", "files/my ___ mainProject/my ___ main.bicep" },
         DisplayName = "HandlesPathsCorrectly:  Characters to avoid")]
     [DataRow(
-        $"{ROOT}my root/my project/my main.bicep",
-        $"{ROOT}my other root/אמא שלי/אבא שלי.bicep",
-        "my main.bicep",
-        "../../my other root/אמא שלי/אבא שלי.bicep",
-        "files/parent/parent/my other root/אמא שלי/אבא שלי.bicep",
-        DisplayName = "HandlesPathsCorrectly:  Global characters")]*/
+        new string[] { $"{ROOT}ποταμός/Fluß im Regen.bicep", $"{ROOT}my other root/אמא שלי/אבא שלי.bicep" },
+        new string[] { "Fluß im Regen.bicep", "<root2>/אבא שלי.bicep" },
+        new string[] { "files/Fluß im Regen.bicep", "files/_root2_/אבא שלי.bicep" },
+        DisplayName = "HandlesPathsCorrectly:  International characters")]
     [DataTestMethod]
     public void HandlesPathsCorrectly(
         string[] inputPaths,
         string[] expectedPaths,
         string[] expectedArchivePaths
-        )
+    )
     {
         var fs = new MockFileSystem();
 
