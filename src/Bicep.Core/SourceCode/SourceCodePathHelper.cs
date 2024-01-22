@@ -47,7 +47,7 @@ namespace Bicep.Core.SourceCode
         ///   c:/users/username/repos/deployment/shared/shared1.bicep
         ///   d:/bicepcacheroot/br/example.azurecr.io/test$provider$http/1.2.3$/main.json
         ///
-        /// the calculed roots are:
+        /// the calculated roots are:
         /// 
         ///   c:/users/username/repos/deployment/src
         ///   c:/users/username/repos/deployment/shared
