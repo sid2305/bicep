@@ -171,15 +171,12 @@ public class SourceArchiveTests
             });
     }
 
-    //asdfg do a compiled link source archive test
-
     [TestMethod]
     public void CanPackAndUnpackDocumentLinks()
     {
         Uri projectFolder = new("file:///my project/my sources/", UriKind.Absolute);
         var fs = new MockFileSystem();
         fs.AddDirectory(projectFolder.LocalPath);
-        //asdfg weird chars, multiple roots
         var mainBicep = CreateSourceFile(fs, projectFolder, "main&.bicep", SourceArchive.SourceKind_Bicep, MainDotBicepSource);
         var mainJson = CreateSourceFile(fs, projectFolder, "main.json", SourceArchive.SourceKind_ArmTemplate, MainDotJsonSource);
         var standaloneJson = CreateSourceFile(fs, projectFolder, "standalone.json", SourceArchive.SourceKind_ArmTemplate, StandaloneJsonSource);
@@ -451,9 +448,6 @@ public class SourceArchiveTests
             archivedFile3.ArchivePath.Should().Be(expectedArchivePath3);
         }
     }
-
-    //asdfg test duplicates after munge
-    //asdfg including real folder starts with name "parent"
 
     [TestMethod]
     public void GetSourceFiles_ForwardsCompat_ShouldIgnoreUnrecognizedPropertiesInMetadata()

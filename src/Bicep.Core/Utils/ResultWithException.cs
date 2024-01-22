@@ -4,7 +4,7 @@
 using System;
 using Bicep.Core.Utils;
 
-namespace Bicep.Core.Diagnostics; //asdfg move
+namespace Bicep.Core.Utils;
 
 public class ResultWithException<TSuccess> : Result<TSuccess, Exception>
     where TSuccess : class

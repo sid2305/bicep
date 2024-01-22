@@ -16,7 +16,6 @@ using Bicep.Core.Diagnostics;
 using Bicep.Core.Exceptions;
 using Bicep.Core.Workspaces;
 
-//asdfg .gzp
 namespace Bicep.Core.SourceCode
 {
     public class SourceNotAvailableException : Exception
@@ -124,7 +123,7 @@ namespace Bicep.Core.SourceCode
             // IF ADDING TO THIS: Remember both forwards and backwards compatibility.
             // E.g., previous versions must be able to deal with unrecognized source kinds.
             // (but see CurrentMetadataVersion for breaking changes)
-            string Path,/*asdfg rename?*/        // the location, relative to the main.bicep file's folder, for the file that will be shown to the end user (required in all Bicep versions)
+            string Path,        // the location, relative to the main.bicep file's folder, for the file that will be shown to the end user (required in all Bicep versions)
             string ArchivePath, // the location (relative to root) of where the file is stored in the archive
             string Kind         // kind of source
         );
@@ -334,14 +333,6 @@ namespace Bicep.Core.SourceCode
 
             throw new ArgumentException($"Could not find a root for path \"{path}\"");
         }
-
-        //asdfg
-        //private static string CalculateRelativeFilePath(string baseFolderPath, string filePath)
-        //{
-        //    Uri relativeUri = Path.GetRelativePath(baseFolderPath, filePath);
-        //    var relativeLocation = Uri.UnescapeDataString(relativeUri.OriginalString);
-        //    return relativeLocation;
-        //}
 
         private SourceArchive(Stream stream)
         {

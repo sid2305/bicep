@@ -40,7 +40,7 @@ namespace Bicep.Core.SourceCode
         /// </returns>
         /// </summary>
         /// <example>
-        /// 
+        ///
         ///   c:/users/username/repos/deployment/src/main.bicep
         ///   c:/users/username/repos/deployment/src/modules/module1.bicep
         ///   c:/users/username/repos/deployment/src/modules/module2.bicep
@@ -48,7 +48,7 @@ namespace Bicep.Core.SourceCode
         ///   d:/bicepcacheroot/br/example.azurecr.io/test$provider$http/1.2.3$/main.json
         ///
         /// the calculated roots are:
-        /// 
+        ///
         ///   c:/users/username/repos/deployment/src
         ///   c:/users/username/repos/deployment/shared
         ///   d:/bicepcacheroot/br/example.azurecr.io/test$provider$http/1.2.3$
@@ -110,7 +110,7 @@ namespace Bicep.Core.SourceCode
 
         private static bool IsDescendentOf(string folder, string possibleParentFolder)
         {
-            return folder != possibleParentFolder // asdfg insensitive?
+            return folder != possibleParentFolder
                 && IsSameOrIsDescendentOf(folder, possibleParentFolder);
         }
 
