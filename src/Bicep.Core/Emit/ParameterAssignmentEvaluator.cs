@@ -277,6 +277,19 @@ public class ParameterAssignmentEvaluator
         {
             return EvaluateParameter(paramsByName[name]).Value ?? throw new InvalidOperationException($"Parameter {name} has an invalid value");
         };
+        helper.OnGetFunction = (name, _) =>
+        {
+            if (wildcardImportPropertiesByName.TryGetValue(name, out var wildcardImportProperty) &&
+                wildcardImportProperty.WildcardImport.SourceModel is SemanticModel importedFrom &&
+                templateResults.GetOrAdd(importedFrom, GetTemplate).TryUnwrap() is {} template)
+            {
+                return template.Functions
+                    .First(x => x.Namespace.Value == EmitConstants.UserDefinedFunctionsNamespace)
+                    .Members[wildcardImportProperty.PropertyName];
+            }
+
+            throw new InvalidOperationException($"Function {name} not found");
+        };
 
         return helper.EvaluationContext;
     }

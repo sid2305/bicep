@@ -5625,4 +5625,36 @@ param foo {
             ("BCP308", DiagnosticLevel.Error, """The decorator "secure" may not be used on statements whose declared type is a reference to a user-defined type."""),
         });
     }
+
+    [TestMethod]
+    public void Functions_can_be_imported_in_bicepparam_files()
+    {
+        var result = CompilationHelper.CompileParams(
+            ("parameters.bicepparam", """
+using 'main.bicep'
+
+import * as func from 'func.bicep'
+
+param foo = func.greet('Anthony')
+"""),
+            ("func.bicep", """
+@export()
+@description('Say hi to someone')
+func greet(name string) string => 'Hi, ${name}!'
+"""),
+            ("main.bicep", """
+param foo string
+
+output foo string = foo
+"""),
+            ("bicepconfig.json", """
+{
+  "experimentalFeaturesEnabled": {
+    "userDefinedFunctions": true
+  }
+}
+"""));
+
+        result.Should().NotHaveAnyDiagnostics();
+    }
 }
