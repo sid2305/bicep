@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using Bicep.Core.UnitTests;
 using Bicep.Core.UnitTests.Assertions;
@@ -10,6 +11,7 @@ using Bicep.LanguageServer.Registry;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Microsoft.WindowsAzure.ResourceStack.Common.Json;
 using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using OmniSharp.Extensions.LanguageServer.Protocol.Workspace;
@@ -85,8 +87,13 @@ using 'br:mockregistry.io/test/foo:1.1'
 
 param foo = 'abc'
 """, paramsFileUri);
+        // troubleshooting flaky test failures
+        TestContext.WriteLine($"1st diags: {diags.ToJson()}");
+
         diags = await helper.WaitForDiagnostics(paramsFileUri);
         diags.Diagnostics.Should().ContainSingle(x => x.Message.Contains("Expected a value of type \"bool\" but the provided value is of type \"'abc'\"."));
+        // troubleshooting flaky test failures
+        TestContext.WriteLine($"2nd diags: {diags.ToJson()}");
 
         await publish("param foo string");
 
@@ -100,5 +107,7 @@ param foo = 'abc'
 
         diags = await helper.WaitForDiagnostics(paramsFileUri);
         diags.Diagnostics.Should().BeEmpty();
+        // troubleshooting flaky test failures
+        TestContext.WriteLine($"3rd diags: {diags.ToJson()}");
     }
 }
